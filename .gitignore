@@ -1,9 +1,13 @@
 # Environments & Secrets
 .env
 .env.*
+.venv
 .venv/
+venv
 venv/
+env
 env/
+ENV
 ENV/
 
 # Python Bytecode & Cache
