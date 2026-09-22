@@ -2,6 +2,8 @@
 
 A second-order, experimentally-validated silicon photonic integrated circuit (PIC) simulation, autograd, and compilation engine built with PyTorch. Calibrated against 220 nm Silicon-on-Insulator (SOI) commercial foundry process design kits (PDKs) such as AIM Photonics, IMEC, and AMF.
 
+> 📖 **Deep-Dive Architecture & Developer Guide:** For a comprehensive mathematical breakdown, tensor execution diagrams, and developer onboarding instructions, see [`ARCHITECTURE_AND_DEVELOPER_GUIDE.md`](ARCHITECTURE_AND_DEVELOPER_GUIDE.md).
+
 ---
 
 ## 🌟 Overview
