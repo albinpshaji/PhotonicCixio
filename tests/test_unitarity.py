@@ -45,9 +45,10 @@ def test_unitarity_random_phases():
         twin = PhotonicMeshDigitalTwin(cfg)
 
         batch_size = 8
-        torch.manual_seed(42 + n_modes)
-        theta = torch.rand(batch_size, twin.total_mzis, device=cfg.device) * math.pi
-        phi = torch.rand(batch_size, twin.total_mzis, device=cfg.device) * (2.0 * math.pi)
+        gen = torch.Generator(device=cfg.device)
+        gen.manual_seed(42 + n_modes)
+        theta = torch.rand(batch_size, twin.total_mzis, generator=gen, device=cfg.device) * math.pi
+        phi = torch.rand(batch_size, twin.total_mzis, generator=gen, device=cfg.device) * (2.0 * math.pi)
 
         T = twin.compute_transfer_matrix(theta, phi)  # (batch, N, N)
 
@@ -68,12 +69,13 @@ def test_power_conservation_field_propagation():
         twin = PhotonicMeshDigitalTwin(cfg)
 
         batch_size = 16
-        torch.manual_seed(123 + n_modes)
-        E_in = (torch.randn(batch_size, n_modes, device=cfg.device) + 
-                1.0j * torch.randn(batch_size, n_modes, device=cfg.device)).to(cfg.complex_dtype)
+        gen = torch.Generator(device=cfg.device)
+        gen.manual_seed(123 + n_modes)
+        E_in = (torch.randn(batch_size, n_modes, generator=gen, device=cfg.device) + 
+                1.0j * torch.randn(batch_size, n_modes, generator=gen, device=cfg.device)).to(cfg.complex_dtype)
 
-        theta = torch.rand(batch_size, twin.total_mzis, device=cfg.device) * math.pi
-        phi = torch.rand(batch_size, twin.total_mzis, device=cfg.device) * (2.0 * math.pi)
+        theta = torch.rand(batch_size, twin.total_mzis, generator=gen, device=cfg.device) * math.pi
+        phi = torch.rand(batch_size, twin.total_mzis, generator=gen, device=cfg.device) * (2.0 * math.pi)
 
         E_out = twin.propagate_field(E_in, theta, phi)
 
@@ -85,6 +87,40 @@ def test_power_conservation_field_propagation():
         assert rel_diff < 5e-5, f"Energy not conserved for N={n_modes}: rel_diff = {rel_diff}"
 
 
+def test_clements_haar_reconstruction_universal():
+    """
+    Verify exact analytical Clements reconstruction of random Haar unitary matrices
+    via PhotonicMeshDigitalTwin in double precision (complex128).
+    Strict numerical fidelity F > 1 - 1e-12 and ||U_target - T_PIC||_F < 1e-12.
+    """
+    from src.utils.decomposition import clements_decompose_np, generate_random_unitary
+
+    for n_modes in [2, 4, 8, 16]:
+        cfg = PhotonicConfig(
+            n_modes=n_modes,
+            ideal_mode=True,
+            dtype=torch.float64,
+            complex_dtype=torch.complex128
+        )
+        twin = PhotonicMeshDigitalTwin(cfg)
+
+        U_target = generate_random_unitary(n_modes, device=cfg.device, dtype=torch.complex128)
+        thetas, phis, diag_phases = clements_decompose_np(U_target.cpu().numpy())
+
+        th_t = torch.from_numpy(thetas).to(cfg.device)
+        ph_t = torch.from_numpy(phis).to(cfg.device)
+        dp_t = torch.from_numpy(diag_phases).to(cfg.device)
+
+        T_pic = twin.compute_transfer_matrix(th_t, ph_t, diag_phases=dp_t)
+
+        frobenius_err = torch.norm(U_target - T_pic).item()
+        fidelity = (torch.abs(torch.trace(torch.matmul(U_target.conj().T, T_pic)))**2 / (n_modes**2)).item()
+
+        print(f"[N={n_modes:02d}] Haar Unitary Reconstruction: Frobenius Err = {frobenius_err:.3e} | Fidelity = {fidelity:.16f}")
+        assert frobenius_err < 1e-12, f"Reconstruction Frobenius error {frobenius_err} exceeds 1e-12 for N={n_modes}"
+        assert fidelity > 1.0 - 1e-12, f"Reconstruction fidelity {fidelity} below 1 - 1e-12 for N={n_modes}"
+
+
 if __name__ == "__main__":
     print("=" * 70)
     print("RUNNING UNITARITY & MATHEMATICAL CONSERVATION TESTS")
@@ -92,6 +128,7 @@ if __name__ == "__main__":
     test_unitarity_identity_phases()
     test_unitarity_random_phases()
     test_power_conservation_field_propagation()
+    test_clements_haar_reconstruction_universal()
     print("=" * 70)
     print("[ALL UNITARITY TESTS PASSED]")
     print("=" * 70)

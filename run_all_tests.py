@@ -44,6 +44,8 @@ TEST_SCRIPTS = [
     ("Full Jones Vector Polarization & PDL", "tests/test_polarization.py"),
     ("Phase 2 Full Physics Pipeline Integration", "tests/test_phase2_integration.py"),
     ("Physics Losses & Hardware Evaluations", "tests/test_advanced_evaluations_and_losses.py"),
+    ("Field vs Matrix Equivalence", "tests/test_matrix_field_equivalence.py"),
+    ("Photonic Parameter Calibration", "tests/test_calibration_fitting.py"),
     ("GPU Execution Performance Benchmark", "tests/benchmark_performance.py")
 ]
 

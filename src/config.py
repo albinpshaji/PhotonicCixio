@@ -149,6 +149,10 @@ class PhotonicConfig:
     enable_quantization: bool = True
     # DAC resolution in bits (typically 4 to 8 bits)
     dac_bits: int = 6
+    # Optional dedicated DAC resolution for output diagonal phase screen
+    dac_phi_diag_bits: int = 6
+    # Enable output diagonal phase screen (necessary for universal U(N) unitary synthesis)
+    enable_diagonal_phase_screen: bool = True
     # Differential Non-Linearity (DNL) std in LSB
     dac_dnl_lsb: float = 0.3
     # Integral Non-Linearity (INL) peak in LSB
@@ -159,6 +163,9 @@ class PhotonicConfig:
     phase_jitter_std: float = 0.008
 
     # ---------------- 6. Balanced Photodetection & Readout ----------------
+    # Optical readout mode: 'direct' (single-ended power), 'dual_rail' (differential pair 2k, 2k+1),
+    # 'homodyne_i' (in-phase with local oscillator), 'homodyne_q' (quadrature with local oscillator)
+    readout_mode: str = "direct"
     # Enable photodetector noise (shot, thermal, RIN)
     enable_noise: bool = True
     # Photodiode responsivity R (A/W)
@@ -175,7 +182,7 @@ class PhotonicConfig:
     rin_db_per_hz: float = -145.0
     # Operating temperature (Kelvin)
     temperature: float = 300.0
-    # Enable Balanced Photodetection (BPD) architecture for signed matrix math
+    # Enable Balanced Photodetection (BPD) architecture for signed matrix math (legacy compatibility)
     enable_balanced_detection: bool = True
     # BPD Common-Mode Rejection Ratio (CMRR in dB)
     bpd_cmrr_db: float = 30.0
@@ -194,12 +201,17 @@ class PhotonicConfig:
     coupler_reflectivity_db: float = -40.0
     cavity_length: float = 120.0e-6
 
-    # Module 2: Nonlinear Optics (TPA, FCA, SPM)
+    # Module 2: Nonlinear Optics (TPA, FCA, SPM, FCD)
     enable_nonlinear_optics: bool = True
-    tpa_coefficient: float = 0.79e-9  # m/W (0.79 cm/GW)
-    effective_mode_area: float = 0.1e-12  # m^2 (0.1 um^2)
-    free_carrier_lifetime: float = 1.0e-9  # seconds
-    nonlinear_index_n2: float = 6.0e-18  # m^2/W
+    # Two-photon absorption coefficient (m/W) - calibrated for silicon at 1550 nm (~0.65-0.8 cm/GW = 6.5-8.0e-12 m/W)
+    tpa_coefficient: float = 6.5e-12
+    # Effective optical mode area (m^2) for 450 nm x 220 nm strip waveguide
+    effective_mode_area: float = 0.055e-12
+    # Free-carrier recombination lifetime (seconds)
+    free_carrier_lifetime: float = 2.5e-9
+    # Optical Kerr nonlinear index n2 (m^2/W)
+    nonlinear_index_n2: float = 4.5e-18
+    # Optical input power in Watts (CW)
     optical_input_power_watts: float = 5.0e-3  # 5 mW
 
     # Module 3: Polarization & Jones Vectors
@@ -208,6 +220,12 @@ class PhotonicConfig:
     polarization_coupling_rad: float = 0.02
     tm_crossing_loss_db: float = 0.08
     tm_bend_loss_factor: float = 2.5
+
+    # Module 4: Advanced Thermal Predistortion (BNNLS)
+    # Tikhonov regularization parameter for thermal inversion
+    thermal_tikhonov_lambda: float = 1e-3
+    # Maximum allowable microheater electrical power per actuator (Watts)
+    max_heater_power_watts: float = 0.050
 
     # Module 5: Waveguide Bend Loss & Mode Mismatch
     enable_bend_loss: bool = True

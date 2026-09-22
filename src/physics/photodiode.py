@@ -148,21 +148,58 @@ class PhotodetectorArray(nn.Module):
     ) -> torch.Tensor:
         """
         Simulates Balanced Photodetection (BPD) pair:
-        I_diff = R_pos * |E_pos|^2 - R_neg * |E_neg|^2 + noise
+        I_diff = (R_pos * |E_pos|^2 + I_dark) - (R_neg * |E_neg|^2 + I_dark) + noise
 
         Returns differential photocurrent in Amperes (can be signed/negative).
         """
         P_pos = torch.real(E_pos * torch.conj(E_pos))
         P_neg = torch.real(E_neg * torch.conj(E_neg))
 
-        I_p = self.R_pos * P_pos
-        I_n = self.R_neg * P_neg
+        i_dark_dc = self.I_dark if self.enabled else 0.0
+        I_p = self.R_pos * P_pos + i_dark_dc
+        I_n = self.R_neg * P_neg + i_dark_dc
 
         if self.enabled and add_noise:
             I_p = self._add_detector_noise(I_p)
             I_n = self._add_detector_noise(I_n)
 
         return I_p - I_n
+
+    def detect_homodyne(
+        self,
+        E_sig: torch.Tensor,
+        mode: str = "homodyne_i",
+        P_lo_watts: float = 1e-3,
+        add_noise: bool = True
+    ) -> torch.Tensor:
+        """
+        Simulates balanced optical homodyne detection with a coherent local oscillator (LO).
+        50:50 optical coupler mixes E_sig with E_LO, followed by balanced photodetection:
+            E_pos = (E_sig + E_LO) / sqrt(2)
+            E_neg = (E_sig - E_LO) / sqrt(2)
+        - 'homodyne_i': In-phase quadrature (E_LO = sqrt(P_LO)) -> I ~ 2*R*sqrt(P_LO)*Re(E_sig)
+        - 'homodyne_q': Quadrature component (E_LO = i*sqrt(P_LO)) -> I ~ 2*R*sqrt(P_LO)*Im(E_sig)
+
+        Args:
+            E_sig: Signal optical field tensor of shape (..., N).
+            mode: 'homodyne_i' or 'homodyne_q'.
+            P_lo_watts: Local oscillator power in Watts.
+            add_noise: Whether to include quantum shot noise and electrical noise.
+
+        Returns:
+            Demodulated homodyne photocurrent tensor of shape (..., N).
+        """
+        inv_sqrt2 = 1.0 / math.sqrt(2.0)
+        amp_lo = math.sqrt(max(P_lo_watts, 1e-12))
+        if mode == "homodyne_q":
+            E_lo = 1.0j * amp_lo
+        else:
+            E_lo = amp_lo
+
+        E_pos = (E_sig + E_lo) * inv_sqrt2
+        E_neg = (E_sig - E_lo) * inv_sqrt2
+
+        return self.detect_balanced(E_pos, E_neg, add_noise=add_noise)
 
     def readout_electronics(self, I_photocurrent: torch.Tensor) -> torch.Tensor:
         """
@@ -186,7 +223,8 @@ class PhotodetectorArray(nn.Module):
     def forward(
         self,
         E_out: torch.Tensor,
-        add_noise: bool = True
+        add_noise: bool = True,
+        readout_mode: Optional[str] = None
     ) -> torch.Tensor:
         """
         Detects optical field and returns measured photocurrent or digitized voltage.
@@ -194,15 +232,27 @@ class PhotodetectorArray(nn.Module):
         Args:
             E_out: Complex optical field tensor of shape (..., N).
             add_noise: Flag to conditionally enable/disable noise during forward pass.
+            readout_mode: Optional override ('direct', 'dual_rail', 'homodyne_i', 'homodyne_q').
 
         Returns:
-            Real-valued readout tensor of shape (..., N).
+            Real-valued readout tensor of shape (..., N) or (..., N/2) for dual_rail.
         """
-        # Square-law optical power detection
+        mode = readout_mode or getattr(self.config, "readout_mode", "direct")
+
+        if mode == "dual_rail":
+            if E_out.shape[-1] % 2 != 0:
+                raise ValueError(f"dual_rail readout requires even number of modes, got {E_out.shape[-1]}")
+            return self.detect_balanced(E_out[..., 0::2], E_out[..., 1::2], add_noise=add_noise)
+
+        if mode in ("homodyne_i", "homodyne_q"):
+            return self.detect_homodyne(E_out, mode=mode, add_noise=add_noise)
+
+        # Default: direct square-law optical power detection
         P_opt = torch.real(E_out * torch.conj(E_out))
 
-        # Mean single-ended photocurrent
-        I_sig = self.R * P_opt
+        # Mean single-ended photocurrent including physical dark current baseline
+        i_dark_dc = self.I_dark if self.enabled else 0.0
+        I_sig = self.R * P_opt + i_dark_dc
 
         if not self.enabled or not add_noise:
             return I_sig

@@ -78,8 +78,39 @@ def test_transient_thermal_ode_convergence():
     assert rel_diff < 0.01, f"Transient did not converge to steady state: rel_diff = {rel_diff.item():.4e}"
 
 
+def test_bnnls_thermal_predistortion():
+    """Verifies that BNNLS thermal predistortion strictly bounds drive powers and respects box constraints."""
+    cfg = PhotonicConfig(n_modes=8, enable_thermal_crosstalk=True, ideal_mode=False)
+    thermal = ThermalCrosstalkModel(cfg)
+
+    P_max = 0.040  # 40 mW maximum allowable drive power
+    theta_max = (P_max / cfg.P_pi) * math.pi
+
+    gen = torch.Generator().manual_seed(42)
+    theta_target = torch.rand(cfg.total_mzis, generator=gen) * math.pi
+
+    # Run BNNLS predistortion
+    theta_drive = thermal.predistort_bnnls(
+        theta_target=theta_target,
+        max_power_watts=P_max,
+        regularization_lambda=1e-3,
+        max_iter=50
+    )
+
+    # Validate strict box constraints [0, theta_max]
+    assert torch.all(theta_drive >= -1e-7), f"BNNLS produced negative phase: min={theta_drive.min().item()}"
+    assert torch.all(theta_drive <= theta_max + 1e-6), f"BNNLS exceeded theta_max: max={theta_drive.max().item()} vs {theta_max}"
+
+    # Verify physical realization under thermal crosstalk
+    theta_realized = thermal(theta_drive)
+    residual = torch.norm(theta_realized - theta_target).item()
+    print(f"  BNNLS Predistortion: Target Mean={theta_target.mean():.3f} | Realized Mean={theta_realized.mean():.3f} | L2 Residual={residual:.3f}")
+    assert residual < 0.5 * torch.norm(theta_target).item(), f"BNNLS residual too large: {residual}"
+
+
 if __name__ == "__main__":
     test_tcr_power_compression()
     test_package_substrate_drift()
     test_transient_thermal_ode_convergence()
+    test_bnnls_thermal_predistortion()
     print("ALL ADVANCED THERMAL TESTS PASSED.")

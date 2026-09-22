@@ -23,6 +23,8 @@ The **Photonics** engine bridges the gap between deep learning software (PyTorch
 photonics/
 ├── src/
 │   ├── config.py             # Foundry PDK constants, physical tolerances & config
+│   ├── calibration/          # Empirical wafer parameter identification & Bayesian fitting
+│   │   └── parameter_fitting.py
 │   ├── compiler/             # Amortized Neural Inverse Compiler & FFT compression
 │   │   └── inverse_compiler.py
 │   ├── models/               # Differentiable Photonic Mesh Digital Twin
@@ -32,13 +34,13 @@ photonics/
 │   ├── physics/              # Physics modeling engine
 │   │   ├── mzi.py            # 2x2 MZI transfer matrix & directional coupler dispersion
 │   │   ├── thermal_2d.py     # 2D Finite-Difference screened Poisson heat equation solver
-│   │   ├── thermal.py        # Thermal crosstalk Green's function & predistortion
+│   │   ├── thermal.py        # Thermal crosstalk Green's function & BNNLS predistortion
 │   │   ├── polarization.py   # Full Jones vector modal birefringence (TE/TM) & PDL
-│   │   ├── nonlinear_optics.py # TPA, FCA, SPM, and FCD dispersion
+│   │   ├── nonlinear_optics.py # TPA, FCA, SPM, and FCD dispersion (RK4 CW solver)
 │   │   ├── backreflection.py # Coherent Fabry-Pérot multi-cavity standing waves
 │   │   ├── bend_loss.py      # Conformal mapping bend radiation loss & mismatch
 │   │   ├── temporal_noise.py # 1/f flicker noise, micro-heater aging & dark current drift
-│   │   ├── photodiode.py     # Square-law detection, shot, thermal & RIN noise
+│   │   ├── photodiode.py     # Multi-mode readout (direct, balanced, homodyne I/Q)
 │   │   ├── spatial_wafer.py  # Gaussian Random Field (GRF) PVT wafer perturbations
 │   │   └── routing_loss.py   # Waveguide crossings & progressive attenuation
 │   ├── runtime/              # Closed-loop Thermal Eigenmode Decomposition (TED) daemon
@@ -47,12 +49,14 @@ photonics/
 │   │   └── losses.py         # In-Situ Adjoint, Fidelity, Unitary Drift & Thermal losses
 │   └── utils/                # Hardware evaluation & decomposition tools
 │       ├── evaluations.py    # ENOB, SINAD, fJ/MAC & matrix fidelity audits
-│       └── decomposition.py  # Clements & Reck matrix factorizations
+│       └── decomposition.py  # Universal Clements decomposition with diagonal screen D
 │
-├── tests/                    # 17 automated test & benchmark suites
+├── tests/                    # 19 automated test & benchmark suites
 │   ├── test_unitarity.py
 │   ├── test_gradient_flow.py
 │   ├── test_physics_validation.py
+│   ├── test_matrix_field_equivalence.py
+│   ├── test_calibration_fitting.py
 │   ├── test_thermal_2d.py
 │   ├── test_polarization.py
 │   ├── test_nonlinear_optics.py
@@ -87,11 +91,27 @@ photonics/
 4. **Coherent Fabry-Pérot Backreflections (`src/physics/backreflection.py`):**
    - Boundary discontinuities at grating couplers ($-25\text{ dB}$), waveguide crossings ($-35\text{ dB}$), and couplers ($-40\text{ dB}$) forming multi-cavity coherent standing-wave ripples.
 
-5. **Waveguide Bend Radiation Loss (`src/physics/bend_loss.py`):**
-   - Conformal mapping Marcuse radiation loss $\alpha_{\text{bend}}(R) = C_1 e^{-C_2 R}$ with S-bend minimum radius routing constraints.
+7. **Universal $U(N)$ Clements Synthesis & Field Equivalence (`src/utils/decomposition.py`):**
+   - Canonical Clements mesh decomposition providing $N(N-1)$ MZI internal/external phase degrees of freedom plus an $N$-element output diagonal phase screen $D$ ($N^2$ total real degrees of freedom).
+   - Exact analytical commutation through diagonal phase screens and topological bubble sorting matching the physical column schedule.
+   - Guaranteed machine-precision reconstruction ($\|U_{\text{target}} - U_{\text{recon}}\|_F < 10^{-14}$, fidelity $1.00000000000000$) on Haar random unitaries.
+   - Rigorous mathematical equivalence between $O(N)$ field propagation `propagate_field()` and $O(N^2)$ transfer matrix multiplication `compute_transfer_matrix()` ($< 10^{-14}$ error across all modes and loss settings).
 
-6. **1/f Low-Frequency Flicker Noise & Aging (`src/physics/temporal_noise.py`):**
-   - Hooge's low-frequency flicker noise in photodiode/TIA readout, Arrhenius micro-heater resistance drift, and trap-state dark current aging.
+8. **Bounded Non-Negative Thermal Predistortion (`src/physics/thermal.py`):**
+   - Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) solving Bounded Non-Negative Least Squares (BNNLS) for thermo-optic crosstalk inversion.
+   - Strictly enforces box physical constraints $0 \le \theta_{\text{drive}} \le \theta_{\max}$ (no unphysical negative Joule heating).
+   - Incorporates temperature coefficient of resistance (TCR) electro-thermal feedback.
+
+9. **Empirical Parameter Identification & Calibration (`src/calibration/parameter_fitting.py`):**
+   - Differentiable Bayesian parameter estimator distinguishing the prior nominal foundry hypothesis from the empirical hardware model.
+   - Estimates directional coupler split imbalances $(\epsilon_1, \epsilon_2 \in [-0.25, 0.25])$ and static lithographic phase biases $(\phi_{\text{int}})$ from diagnostic optical transmission sweeps.
+   - Achieves $>80\%$ error reduction without invasive physical characterization.
+
+10. **Unified Optical Readout Hierarchy (`src/physics/photodiode.py`):**
+    - Multi-mode photodetection supporting:
+      - `direct`: Single-ended square-law detection with physical dark current ($I_{\text{dark}}$) DC baseline and shot noise.
+      - `dual_rail`: Balanced differential photodiode pair ($I_1 - I_2$) eliminating common-mode DC drift.
+      - `homodyne_i` & `homodyne_q`: Coherent local oscillator (LO) mixing recovering full in-phase ($I$) and quadrature ($Q$) complex optical field amplitudes.
 
 ---
 

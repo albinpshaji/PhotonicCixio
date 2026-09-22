@@ -155,12 +155,15 @@ Waveguide crossings introduce differential Polarization-Dependent Loss (PDL):
 $$\text{Loss}_{\text{TE}} \approx 0.025\text{ dB/crossing}, \quad \text{Loss}_{\text{TM}} \approx 0.080\text{ dB/crossing}$$
 
 ### 3.5 Silicon Optical Nonlinearities (TPA, FCA, SPM, FCD)
-At high optical powers in sub-micron waveguides ($A_{\text{eff}} \approx 0.1\,\mu\text{m}^2$):
-$$\frac{dI}{dz} = -\alpha_{\text{lin}} I - \beta_{\text{TPA}} I^2, \quad \beta_{\text{TPA}} \approx 8.4 \times 10^{-12}\text{ m/W}$$
-Free-carrier generation density $N_c$:
-$$N_c = \frac{\beta_{\text{TPA}} I^2 \tau_c}{2 h \nu}$$
-Nonlinear phase and absorption perturbations:
-$$\Delta\phi_{\text{SPM}} = \frac{2\pi}{\lambda} n_2 I L, \quad \Delta\phi_{\text{FCD}} = -\frac{2\pi}{\lambda} \sigma_n N_c L, \quad \alpha_{\text{FCA}} = \sigma_{\text{FCA}} N_c$$
+At high optical powers in sub-micron waveguides ($A_{\text{eff}} \approx 0.055\,\mu\text{m}^2$):
+$$\frac{dP}{dz} = -\alpha_{\text{lin}} P - k_{\text{tpa}} P^2 - k_{\text{fca}} P^3$$
+where calibrated 220 nm SOI constants are:
+- $\beta_{\text{TPA}} = 6.5 \times 10^{-12}\text{ m/W}$ (Dinu et al., *Appl. Phys. Lett.* 2003)
+- $k_{\text{tpa}} = \frac{\beta_{\text{TPA}}}{A_{\text{eff}}} \approx 118.2\text{ W}^{-1}\text{m}^{-1}$
+- $k_{\text{fca}} = \frac{\sigma_{\text{FCA}} \tau_c \beta_{\text{TPA}}}{2 h \nu A_{\text{eff}}^2} \approx 3.04 \times 10^4\text{ W}^{-2}\text{m}^{-1}$ ($\tau_c = 2.5\text{ ns}$, $\sigma_{\text{FCA}} = 1.45 \times 10^{-21}\text{ m}^2$)
+- $n_2 = 4.5 \times 10^{-18}\text{ m}^2/\text{W}$ (Kerr self-phase modulation)
+- Critical runaway threshold: $P_{\text{crit}} = 50\text{ mW}$. Power above $50\text{ mW}$ triggers high-confinement thermal runaway warnings.
+Integrated via a 4th-order Runge-Kutta (RK4) solver with autograd-stable non-negative power bounds.
 
 ### 3.6 Coherent Fabry-Pérot Multi-Cavity Backreflections
 Boundary discontinuities at grating couplers ($R_1 = -25\text{ dB}$) and crossings ($R_2 = -35\text{ dB}$) create internal optical cavities. The multi-path transfer function is:
@@ -177,6 +180,26 @@ where:
 - **Laser Relative Intensity Noise:** $\sigma_{\text{RIN}}^2 = \text{RIN} \cdot (\mathcal{R} P_{\text{opt}})^2 B$
 - **Hooge 1/f Flicker Noise:** $\sigma_{1/f}^2 = \alpha_H I^2 \ln(f_c / f_{\min})$
 
+Readout modes include single-ended direct detection (with physical dark current DC offset $I_{\text{dark}}$), dual-rail balanced detection ($I_1 - I_2$), and coherent homodyne ($I$ and $Q$ quadrature mixing with a local oscillator).
+
+### 3.8 Universal $U(N)$ Clements Mesh Decomposition & Output Phase Screen
+An arbitrary unitary matrix $U \in U(N)$ requires $N^2$ real degrees of freedom. A Clements triangular/rectangular mesh provides $M = N(N-1)/2$ MZIs, each with 2 phase shifters ($\theta_m, \phi_m$), totaling $N(N-1)$ parameters. Universal representation requires an additional $N$-element output diagonal phase screen:
+$$U = D(\vec{\gamma}) \prod_{l=1}^L U_{\text{col}, l}(\vec{\theta}_l, \vec{\phi}_l), \quad D(\vec{\gamma}) = \text{diag}\left( e^{i \gamma_1}, \dots, e^{i \gamma_N} \right)$$
+Our canonical decomposition (`src/utils/decomposition.py`) commutes all left and right nulling transformations through the diagonal matrix analytically, bubble-sorts disjoint operations into physical digital twin columns, and guarantees double-precision reconstruction ($\|U_{\text{target}} - U_{\text{recon}}\|_F < 10^{-14}$) on Haar unitaries.
+
+### 3.9 Bounded Non-Negative Least Squares (BNNLS) Thermal Predistortion
+Because micro-heaters operate strictly on Joulean dissipation ($P_j = I_j^2 R_j \ge 0$), drive powers cannot be negative. Unconstrained linear inversion ($P = K^{-1} \theta$) yields unphysical negative powers on large arrays.
+We implement the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) solving:
+$$\min_{\mathbf{P} \ge 0} \frac{1}{2} \|K \mathbf{P} - \boldsymbol{\theta}_{\text{target}}\|_2^2 + \frac{\lambda_{\text{tikh}}}{2} \|\mathbf{P}\|_2^2 \quad \text{s.t.} \quad 0 \le P_i \le P_{\max}$$
+with $O(1/k^2)$ accelerated convergence and temperature-dependent resistance feedback:
+$$R_i(T) = R_0 \left[ 1 + \alpha_{\text{TCR}} (T_i - T_0) \right]$$
+
+### 3.10 Empirical Foundry-to-Hardware Parameter Calibration
+Manufacturing variations induce directional coupler split imbalances ($\kappa = 0.5 \pm \epsilon$) and static lithographic phase offsets ($\phi_{\text{int}}$).
+Our differentiable estimator (`src/calibration/parameter_fitting.py`) fits on-chip non-idealities from transmission matrices:
+$$\min_{\boldsymbol{\epsilon}_1, \boldsymbol{\epsilon}_2, \boldsymbol{\phi}_{\text{int}}} \frac{1}{K} \sum_{k=1}^K \|T_{\text{PIC}}(\theta_k, \phi_k; \boldsymbol{\epsilon}, \boldsymbol{\phi}_{\text{int}}) - T_{\text{meas}, k}\|_F^2 + \lambda_{\text{prior}} \|\boldsymbol{\epsilon} - \boldsymbol{\epsilon}_{\text{prior}}\|_2^2$$
+reducing transfer matrix RMSE by $>80\%$ without opening the physical package.
+
 ---
 
 ## 4. Codebase Map & Module Reference
@@ -186,23 +209,24 @@ All simulation source code resides under [`photonics/src/`](src/):
 | File Path | Primary Class / Functions | Description & Responsibilities |
 | :--- | :--- | :--- |
 | **[`src/config.py`](src/config.py)** | `PhotonicConfig`, `FoundryPDK` | Central configuration dataclass. Stores nominal waveguide dimensions, refractive indices, loss coefficients, temperature coefficients, noise parameters, and device precision. |
-| **[`src/models/digital_twin.py`](src/models/digital_twin.py)** | `PhotonicMeshDigitalTwin` | Master PyTorch `nn.Module`. Manages the mesh coordinate layout, cascades all physical effect modules, executes forward optical propagation, and applies detector readout. |
+| **[`src/models/digital_twin.py`](src/models/digital_twin.py)** | `PhotonicMeshDigitalTwin` | Master PyTorch `nn.Module`. Manages mesh coordinate layout, cascades physical effect modules, executes forward optical propagation (field & matrix), and applies detector readout. |
+| **[`src/calibration/parameter_fitting.py`](src/calibration/parameter_fitting.py)** | `MeshParameterEstimator`, `PhotonicCalibrationDataset` | Differentiable Bayesian optimizer identifying coupler split errors ($\epsilon_1, \epsilon_2$) and intrinsic phase biases ($\phi_{\text{int}}$) from diagnostic transmission sweeps. |
 | **[`src/physics/mzi.py`](src/physics/mzi.py)** | `mzi_transfer_matrix`, `directional_coupler_matrix` | Evaluates analytic $2 \times 2$ transfer matrices for symmetric dual-drive MZIs with coupler splitting variations and wavelength dispersion. |
 | **[`src/physics/thermal_2d.py`](src/physics/thermal_2d.py)** | `compute_fd_thermal_greens_function` | Solves the 2D screened Poisson heat equation on the SOI die using finite-difference stencils to produce the exact multi-heater Green's matrix. |
-| **[`src/physics/thermal.py`](src/physics/thermal.py)** | `ThermalCrosstalkModel` | Orchestrates steady-state thermal diffusion, self-heating, heater resistance thermal feedback, and predistortion matrix inversion ($K^{-1}$). |
+| **[`src/physics/thermal.py`](src/physics/thermal.py)** | `ThermalCrosstalkModel`, `predistort_bnnls` | Orchestrates steady-state thermal diffusion, self-heating, heater resistance thermal feedback, and BNNLS FISTA predistortion ($0 \le P \le P_{\max}$). |
 | **[`src/physics/polarization.py`](src/physics/polarization.py)** | `JonesPolarizationModel` | Tracks full $2 \times 2$ Jones vectors ($E_{\text{TE}}, E_{\text{TM}}$), modal birefringence phase delays, bend rotation, and crossing PDL. |
-| **[`src/physics/nonlinear_optics.py`](src/physics/nonlinear_optics.py)** | `SiliconNonlinearOptics` | Models intensity-dependent Two-Photon Absorption (TPA), Free-Carrier Absorption (FCA), Self-Phase Modulation (SPM), and Free-Carrier Dispersion (FCD). |
+| **[`src/physics/nonlinear_optics.py`](src/physics/nonlinear_optics.py)** | `SiliconNonlinearOptics` | Continuous-wave (CW) power-basis Runge-Kutta 4th order solver for TPA, FCA, Kerr SPM, and FCD dispersion, with 50 mW critical threshold monitoring. |
 | **[`src/physics/backreflection.py`](src/physics/backreflection.py)** | `FabryPerotBackreflection` | Implements coherent multi-cavity standing waves, reflectance at grating couplers/crossings, and C-band spectral ripple filtering. |
 | **[`src/physics/bend_loss.py`](src/physics/bend_loss.py)** | `WaveguideBendLossModel` | Calculates bend radiation loss via conformal mapping (Marcatili/Marcuse asymptotic) and S-bend geometry constraints. |
 | **[`src/physics/temporal_noise.py`](src/physics/temporal_noise.py)** | `TemporalNoiseAgingModel` | Generates 1/f low-frequency flicker noise in photodetectors and computes long-term Arrhenius micro-heater resistance aging. |
-| **[`src/physics/photodiode.py`](src/physics/photodiode.py)** | `PhotodetectorArray` | Converts complex optical fields to electrical currents via square-law detection, injects shot/thermal/RIN noise, models TIA saturation and ADC discretization. |
+| **[`src/physics/photodiode.py`](src/physics/photodiode.py)** | `PhotodetectorArray`, `detect_homodyne` | Converts complex optical fields to electrical signals supporting direct detection (with dark current $I_{\text{dark}}$), dual-rail balanced detection, and coherent homodyne ($I/Q$). |
 | **[`src/physics/routing_loss.py`](src/physics/routing_loss.py)** | `ClementsPhysicalRouting` | Implements physical waveguide routing layouts, tracks crossing counts per channel, and applies progressive insertion loss. |
 | **[`src/physics/spatial_wafer.py`](src/physics/spatial_wafer.py)** | `SpatialWaferMap` | Synthesizes correlated wafer-level process variations (width, thickness) via 2D Gaussian Random Fields (GRFs). |
 | **[`src/nn/quantizer.py`](src/nn/quantizer.py)** | `DACQuantizer`, `STEQuantizeFunction` | Quantizes continuous phase shifts into $b$-bit discrete levels ($b \in [4, 8]$) with Straight-Through Estimators (STE) for autograd. |
 | **[`src/compiler/inverse_compiler.py`](src/compiler/inverse_compiler.py)** | `GenerativePhotonicCompiler` | Deep neural inverse compiler predicting optimal phase configurations from target weight matrices in $<1\text{ ms}$. |
 | **[`src/training/losses.py`](src/training/losses.py)** | `InSituAdjointLoss`, `PhotonicFidelityLoss`, `UnitaryDriftPenalty`, `SpatialThermalGradientPenalty`, `CompositePhotonicLoss` | Suite of physics-aware loss functions for noise-aware training, unitary drift prevention, and optical in-situ backpropagation. |
 | **[`src/utils/evaluations.py`](src/utils/evaluations.py)** | `evaluate_effective_resolution_enob`, `evaluate_matrix_fidelity`, `evaluate_optical_energy_per_mac`, `evaluate_full_hardware_system` | Rigorous hardware evaluation tools computing SINAD, ENOB, optical energy (fJ/MAC, photons/MAC), and trace fidelity. |
-| **[`src/utils/decomposition.py`](src/utils/decomposition.py)** | `clements_decomposition`, `reck_decomposition` | Classical matrix factorizations decomposing arbitrary unitary matrices into ideal planar MZI sequences. |
+| **[`src/utils/decomposition.py`](src/utils/decomposition.py)** | `clements_decompose_np`, `clements_reconstruct_torch` | Canonical Clements matrix decomposition with output diagonal phase screen $D$, exact commutation, and column bubble sorting for universal $U(N)$ synthesis. |
 
 ---
 

@@ -105,9 +105,49 @@ def test_grating_coupler_bandpass():
     assert drop_db > 0.8, f"Grating did not attenuate off-center wavelength: drop = {drop_db:.2f} dB"
 
 
+def test_homodyne_detection_quadratures():
+    """Verifies that balanced optical homodyne detection linearly recovers In-Phase (I) and Quadrature (Q) fields."""
+    cfg = PhotonicConfig(n_modes=4, enable_noise=False, ideal_mode=False, bpd_cmrr_db=60.0)
+    detector = PhotodetectorArray(cfg)
+
+    # Test field: E = A * exp(i * phi) with known amplitude and phase
+    A = math.sqrt(2.0e-3)  # sqrt(2 mW)
+    phi = math.pi / 4.0    # 45 deg -> Re(E) = Im(E) = 1 mW^0.5
+    E_test = torch.tensor([A * math.cos(phi) + 1.0j * A * math.sin(phi)], dtype=torch.complex64)
+
+    P_lo = 1.0e-3  # 1 mW LO
+    # Expected I-channel: 2 * R * sqrt(P_lo) * Re(E)
+    expected_I = 2.0 * detector.R * math.sqrt(P_lo) * (A * math.cos(phi))
+    # Expected Q-channel: 2 * R * sqrt(P_lo) * Im(E)
+    expected_Q = 2.0 * detector.R * math.sqrt(P_lo) * (A * math.sin(phi))
+
+    I_meas = detector.detect_homodyne(E_test, mode="homodyne_i", P_lo_watts=P_lo, add_noise=False).item()
+    Q_meas = detector.detect_homodyne(E_test, mode="homodyne_q", P_lo_watts=P_lo, add_noise=False).item()
+
+    assert abs(I_meas - expected_I) / expected_I < 1e-2, f"Homodyne I mismatch: {I_meas:.4e} vs {expected_I:.4e}"
+    assert abs(Q_meas - expected_Q) / expected_Q < 1e-2, f"Homodyne Q mismatch: {Q_meas:.4e} vs {expected_Q:.4e}"
+
+
+def test_dark_current_mean_photocurrent():
+    """Verifies that dark current appears as a physical DC baseline in single-ended readout."""
+    cfg = PhotonicConfig(n_modes=4, dark_current=10.0e-9, enable_noise=False, ideal_mode=False)
+    detector = PhotodetectorArray(cfg)
+
+    # Zero optical power: pure dark current
+    E_zero = torch.zeros(4, dtype=torch.complex64)
+    I_dark_out = detector(E_zero, add_noise=False, readout_mode="direct")
+
+    expected_dark = torch.full((4,), 10.0e-9, dtype=torch.float32)
+    assert torch.allclose(I_dark_out, expected_dark, rtol=1e-4), (
+        f"Dark current DC baseline mismatch: {I_dark_out} vs {expected_dark}"
+    )
+
+
 if __name__ == "__main__":
     test_bpd_cmrr_suppression()
     test_tia_saturation()
     test_adc_quantization()
     test_grating_coupler_bandpass()
+    test_homodyne_detection_quadratures()
+    test_dark_current_mean_photocurrent()
     print("ALL READOUT SUBSYSTEM TESTS PASSED.")
