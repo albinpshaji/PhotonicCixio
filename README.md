@@ -155,8 +155,26 @@ pip install -e .
 Execute all 17 verification and benchmark suites:
 
 ```bash
+# Run all tests (headless text report)
 python run_all_tests.py
+
+# Run all tests and generate publication-grade visual diagnostics & plots
+python run_all_tests.py --plot
+
+# Or generate the test plots directly
+python tests/generate_test_plots.py
 ```
+
+All generated visual diagnostics are saved in high resolution (300 DPI) under `reports/plots/`:
+1. `01_unitarity_and_reconstruction.png`: Haar unitary decomposition & exact field-matrix equivalence
+2. `02_field_matrix_equivalence.png`: Output field profiles & error residuals across all modes
+3. `03_silicon_nonlinear_optics.png`: Optical transmission vs input power, TPA + FCA, and SPM nonlinear phase shift
+4. `04_thermal_and_bnnls_predistortion.png`: Thermal Green's function coupling matrix and BNNLS crosstalk cancellation
+5. `05_hardware_parameter_calibration.png`: Convergence of coupler split error $(\epsilon_1, \epsilon_2)$ and lithographic phase offsets
+6. `06_readout_and_noise_breakdown.png`: Photodiode direct, balanced dual-rail, and coherent homodyne I/Q constellation
+7. `07_dispersion_and_backreflection.png`: C-band chromatic dispersion and Fabry-Pérot multi-cavity backreflection ripples
+8. `08_gpu_benchmarks.png`: Forward latency and vector throughput scaling across mesh sizes ($N=4 \dots 64$)
+9. `09_executive_test_dashboard.png`: Unified 6-panel executive test and health dashboard
 
 Run individual test suites via `pytest`:
 

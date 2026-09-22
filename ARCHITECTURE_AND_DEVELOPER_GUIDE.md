@@ -352,8 +352,17 @@ When contributing new features or modifying this repository, adhere to the follo
 ### Run the Master Test Suite (17 Comprehensive Test Suites)
 ```bash
 # From inside the photonics/ directory:
+# Headless run:
 .venv/bin/python run_all_tests.py
+
+# Run all tests and generate publication-grade visual diagnostics:
+.venv/bin/python run_all_tests.py --plot
+
+# Or generate the test visualization gallery directly:
+.venv/bin/python tests/generate_test_plots.py
 ```
+
+Generated plots are stored under `reports/plots/` and rendered using `src/utils/visualizer.py` (dark theme `#0b0f19`, 300 DPI, Matplotlib Agg backend).
 
 ### Run Specific Test Suites via Pytest
 ```bash

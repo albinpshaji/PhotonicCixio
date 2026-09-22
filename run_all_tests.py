@@ -95,6 +95,12 @@ def run_suite():
     print(f"Total Execution Time: {total_elapsed:.2f} seconds")
     if all_passed:
         print("[FINAL STATUS] ALL VERIFICATION TESTS AND BENCHMARKS PASSED PERFECTLY!")
+        if "--plot" in sys.argv:
+            print("\n" + "=" * 80)
+            print("[GENERATING GRAPHICAL TEST DIAGNOSTICS & PLOTS]")
+            print("=" * 80)
+            plot_script = os.path.join(DIR, "tests", "generate_test_plots.py")
+            subprocess.run([PYTHON_EXEC, plot_script], cwd=DIR, env=env)
         return 0
     else:
         print("[FINAL STATUS] ONE OR MORE VERIFICATION CHECKS FAILED.")
