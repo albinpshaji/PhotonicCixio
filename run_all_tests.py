@@ -50,7 +50,7 @@ TEST_SCRIPTS = [
 ]
 
 
-def run_suite():
+def run_suite(generate_plots: bool = False):
     print("=" * 80)
     print("SILICON PHOTONIC DIGITAL TWIN - COMPLETE VERIFICATION SUITE")
     print(f"Target Environment: {PYTHON_EXEC}")
@@ -95,7 +95,7 @@ def run_suite():
     print(f"Total Execution Time: {total_elapsed:.2f} seconds")
     if all_passed:
         print("[FINAL STATUS] ALL VERIFICATION TESTS AND BENCHMARKS PASSED PERFECTLY!")
-        if "--plot" in sys.argv:
+        if generate_plots:
             print("\n" + "=" * 80)
             print("[GENERATING GRAPHICAL TEST DIAGNOSTICS & PLOTS]")
             print("=" * 80)
@@ -108,4 +108,8 @@ def run_suite():
 
 
 if __name__ == "__main__":
-    sys.exit(run_suite())
+    import argparse
+    parser = argparse.ArgumentParser(description="Master verification & benchmark test runner for the Silicon Photonic Digital Twin.")
+    parser.add_argument("--plot", action="store_true", help="Generate publication-grade diagnostic plots & figures under reports/plots/ upon test completion.")
+    args = parser.parse_args()
+    sys.exit(run_suite(generate_plots=args.plot))
