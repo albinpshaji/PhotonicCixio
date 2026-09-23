@@ -206,7 +206,8 @@ class PhotonicMeshDigitalTwin(nn.Module):
         wavelength: Optional[Union[float, torch.Tensor]] = None,
         override_eps1: Optional[torch.Tensor] = None,
         override_eps2: Optional[torch.Tensor] = None,
-        override_phi_intrinsic: Optional[torch.Tensor] = None
+        override_phi_intrinsic: Optional[torch.Tensor] = None,
+        include_packaging: bool = False
     ) -> torch.Tensor:
         """
         Synthesizes the full cumulative N x N optical transfer matrix T_PIC.
@@ -332,6 +333,11 @@ class PhotonicMeshDigitalTwin(nn.Module):
             D_fp = torch.diag_embed(H_fp)
             T_cumul = torch.matmul(D_fp, T_cumul)
 
+        # Apply packaging grating couplers (input and output fiber couplings) if requested
+        if include_packaging and not self.ideal_mode:
+            T_cumul = self.photodetector.apply_grating_coupler(T_cumul, wavelength)
+            T_cumul = self.photodetector.apply_grating_coupler(T_cumul, wavelength)
+
         return T_cumul
 
     def propagate_field(
@@ -343,7 +349,8 @@ class PhotonicMeshDigitalTwin(nn.Module):
         wavelength: Optional[Union[float, torch.Tensor]] = None,
         override_eps1: Optional[torch.Tensor] = None,
         override_eps2: Optional[torch.Tensor] = None,
-        override_phi_intrinsic: Optional[torch.Tensor] = None
+        override_phi_intrinsic: Optional[torch.Tensor] = None,
+        include_packaging: bool = True
     ) -> torch.Tensor:
         """
         Propagates complex optical field vector E_in stage-by-stage through the mesh.
@@ -358,6 +365,7 @@ class PhotonicMeshDigitalTwin(nn.Module):
             override_eps1: Optional tensor overriding coupler_eps1.
             override_eps2: Optional tensor overriding coupler_eps2.
             override_phi_intrinsic: Optional tensor overriding phi_intrinsic.
+            include_packaging: Whether to apply input/output grating coupler losses and phase jitter.
 
         Returns:
             E_out: Transmitted complex field of shape (..., N).
@@ -370,7 +378,7 @@ class PhotonicMeshDigitalTwin(nn.Module):
 
         # Clone input field and apply input grating coupler & laser phase noise
         E_curr = E_in.to(self.complex_dtype).clone()
-        if not self.ideal_mode:
+        if not self.ideal_mode and include_packaging:
             E_curr = self.photodetector.apply_grating_coupler(E_curr, wavelength)
             E_curr = self.photodetector.apply_laser_phase_noise(E_curr)
 
@@ -480,7 +488,7 @@ class PhotonicMeshDigitalTwin(nn.Module):
             E_curr = self.backreflection_model(E_curr, wavelength=wavelength)
 
         # Apply output grating coupler
-        if not self.ideal_mode:
+        if not self.ideal_mode and include_packaging:
             E_curr = self.photodetector.apply_grating_coupler(E_curr, wavelength)
 
         return E_curr

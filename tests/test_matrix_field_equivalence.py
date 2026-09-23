@@ -98,12 +98,60 @@ def test_field_matrix_equivalence_lossy():
         assert diff < 1e-12, f"Field vs matrix divergence in lossy mode for N={n_modes}: diff = {diff}"
 
 
+def test_field_matrix_equivalence_packaged():
+    """Verify that propagate_field and compute_transfer_matrix match under full packaging (grating coupler) loss."""
+    for n_modes in [4, 8]:
+        cfg = PhotonicConfig(
+            n_modes=n_modes,
+            ideal_mode=False,
+            enable_loss=True,
+            loss_per_stage_db=0.20,
+            loss_std_db=0.0,
+            enable_coupler_errors=False,
+            enable_physical_routing=False,
+            enable_dispersion=False,
+            enable_quantization=False,
+            enable_thermal_crosstalk=False,
+            enable_polarization=False,
+            enable_noise=False,
+            enable_bend_loss=False,
+            enable_backreflection=False,
+            enable_nonlinear_optics=False,
+            laser_linewidth=0.0,
+            grating_coupler_loss_db=3.0,
+            dtype=torch.float64,
+            complex_dtype=torch.complex128
+        )
+        twin = PhotonicMeshDigitalTwin(cfg)
+
+        batch_size = 4
+        gen = torch.Generator(device=cfg.device)
+        gen.manual_seed(300 + n_modes)
+
+        theta = torch.rand(twin.total_mzis, generator=gen, device=cfg.device, dtype=torch.float64) * math.pi
+        phi = torch.rand(twin.total_mzis, generator=gen, device=cfg.device, dtype=torch.float64) * 2 * math.pi
+        diag = torch.rand(n_modes, generator=gen, device=cfg.device, dtype=torch.float64) * 2 * math.pi
+
+        T_mat = twin.compute_transfer_matrix(theta, phi, diag_phases=diag, include_packaging=True)
+
+        E_in = (torch.randn(batch_size, n_modes, generator=gen, device=cfg.device, dtype=torch.float64) +
+                1.0j * torch.randn(batch_size, n_modes, generator=gen, device=cfg.device, dtype=torch.float64)).to(cfg.complex_dtype)
+
+        E_prop = twin.propagate_field(E_in, theta, phi, diag_phases=diag, include_packaging=True)
+        E_mat = torch.matmul(T_mat.unsqueeze(0), E_in.unsqueeze(-1)).squeeze(-1)
+
+        diff = torch.max(torch.norm(E_prop - E_mat, dim=-1)).item()
+        print(f"[Packaged N={n_modes:02d}] Max Field vs Matrix Diff: {diff:.3e}")
+        assert diff < 1e-12, f"Field vs matrix divergence in packaged mode for N={n_modes}: diff = {diff}"
+
+
 if __name__ == "__main__":
     print("=" * 70)
     print("RUNNING FIELD-VS-MATRIX EQUIVALENCE TESTS")
     print("=" * 70)
     test_field_matrix_equivalence_ideal()
     test_field_matrix_equivalence_lossy()
+    test_field_matrix_equivalence_packaged()
     print("=" * 70)
     print("[ALL FIELD-VS-MATRIX EQUIVALENCE TESTS PASSED]")
     print("=" * 70)

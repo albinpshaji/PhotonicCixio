@@ -114,26 +114,50 @@ def generate_all_plots(output_dir="reports/plots"):
     sample_emat = None
 
     for n in modes_list:
-        cfg_ideal = PhotonicConfig(n_modes=n, ideal_mode=True, device=device)
+        cfg_ideal = PhotonicConfig(
+            n_modes=n,
+            ideal_mode=True,
+            device=device,
+            dtype=torch.float64,
+            complex_dtype=torch.complex128
+        )
         twin_ideal = PhotonicMeshDigitalTwin(cfg_ideal)
-        theta = torch.rand(twin_ideal.total_mzis, device=device) * math.pi
-        phi = torch.rand(twin_ideal.total_mzis, device=device) * (2 * math.pi)
-        diag = torch.rand(n, device=device) * (2 * math.pi)
-        e_in = (torch.randn(n, device=device) + 1.0j * torch.randn(n, device=device)).to(cfg_ideal.complex_dtype)
+        theta = torch.rand(twin_ideal.total_mzis, device=device, dtype=torch.float64) * math.pi
+        phi = torch.rand(twin_ideal.total_mzis, device=device, dtype=torch.float64) * (2 * math.pi)
+        diag = torch.rand(n, device=device, dtype=torch.float64) * (2 * math.pi)
+        e_in = (torch.randn(n, device=device, dtype=torch.float64) + 1.0j * torch.randn(n, device=device, dtype=torch.float64)).to(cfg_ideal.complex_dtype)
 
         e_prop = twin_ideal.propagate_field(e_in, theta, phi, diag_phases=diag)
         t_mat = twin_ideal.compute_transfer_matrix(theta, phi, diag_phases=diag)
         e_matmul = torch.matmul(t_mat, e_in)
         ideal_diffs.append(torch.max(torch.abs(e_prop - e_matmul)).item())
 
-        cfg_lossy = PhotonicConfig(n_modes=n, ideal_mode=False, enable_loss=True,
-                                   enable_coupler_errors=False, enable_dispersion=False,
-                                   enable_physical_routing=False, enable_bend_loss=False,
-                                   enable_backreflection=False, enable_polarization=False,
-                                   device=device)
+        cfg_lossy = PhotonicConfig(
+            n_modes=n,
+            ideal_mode=False,
+            enable_loss=True,
+            loss_per_stage_db=0.15,
+            loss_std_db=0.0,
+            enable_coupler_errors=False,
+            enable_dispersion=False,
+            enable_physical_routing=False,
+            enable_bend_loss=False,
+            enable_backreflection=False,
+            enable_polarization=False,
+            enable_quantization=False,
+            enable_phase_jitter=False,
+            enable_thermal_crosstalk=False,
+            enable_nonlinear_optics=False,
+            enable_noise=False,
+            laser_linewidth=0.0,
+            grating_coupler_loss_db=3.0,
+            device=device,
+            dtype=torch.float64,
+            complex_dtype=torch.complex128
+        )
         twin_lossy = PhotonicMeshDigitalTwin(cfg_lossy)
-        e_prop_l = twin_lossy.propagate_field(e_in, theta, phi, diag_phases=diag)
-        t_mat_l = twin_lossy.compute_transfer_matrix(theta, phi, diag_phases=diag)
+        e_prop_l = twin_lossy.propagate_field(e_in, theta, phi, diag_phases=diag, include_packaging=True)
+        t_mat_l = twin_lossy.compute_transfer_matrix(theta, phi, diag_phases=diag, include_packaging=True)
         e_matmul_l = torch.matmul(t_mat_l, e_in)
         lossy_diffs.append(torch.max(torch.abs(e_prop_l - e_matmul_l)).item())
 
