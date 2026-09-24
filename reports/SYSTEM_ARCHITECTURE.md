@@ -11,99 +11,85 @@ When viewed on GitHub, the diagram below is automatically rendered as an interac
 ```mermaid
 flowchart TD
     %% =========================================================================
-    %% TOP LEVEL INPUTS
+    %% TIER 0: INGESTION & DUAL INPUTS
     %% =========================================================================
-    subgraph Inputs["System Ingestion & Dual Inputs"]
+    subgraph Inputs["1. System Ingestion"]
         direction LR
-        AI_W["AI Weight Matrix W ∈ ℝ^(N×N)<br/>(PyTorch Neural Network Layer)"]
-        OPT_IN["Input Optical Feature Vector E_in ∈ ℂ^N<br/>(CW Laser Carrier λ = 1550 nm)"]
+        AI_W["AI Weight Matrix W<br/>(PyTorch Tensor)"]
+        OPT_IN["Optical Feature Vector E_in<br/>(Laser Carrier 1550 nm)"]
     end
 
     %% =========================================================================
-    %% PHASE 1: STATIC OPTICAL COMPILATION & PRE-COMPENSATION
+    %% TIER 1: PHASE 1 COMPILATION (HORIZONTAL ROW)
     %% =========================================================================
-    subgraph Phase1["Phase 1: Optical Compilation & Pre-Compensation (Static Matrix Engine)"]
-        direction TB
-        CLEMENTS["1. Clements Nulling Scan<br/>• Optica 2016 SVD / QR Decomposition<br/>• Generates M = N(N-1)/2 Phase Pairs (θ, φ)<br/>• Generates N Diagonal Phases γ"]
-        CALIB["2. Calibration Parameter Fitting<br/>• Inverts Foundry Wafer Variances<br/>• Recovers Coupler Errors (ε₁, ε₂)<br/>• Offsets Intrinsic Arm Bias φ_int"]
-        BNNLS["3. BNNLS Thermal Inversion<br/>• Solves P_drive = K⁻¹ · P_target<br/>• 2D Screened Poisson Heat PDE<br/>• Cancels Lateral Heat Bleed (~55 µm)"]
-        DAC["4. DAC Discretization & Jitter<br/>• 6-bit / 8-bit Voltage Discretization<br/>• Injects DNL (0.3 LSB) & INL (0.5 LSB)<br/>• Analog Phase Jitter (σ = 0.008 rad)<br/>• Straight-Through Estimators (STE)"]
-
-        CLEMENTS --> CALIB --> BNNLS --> DAC
+    subgraph Phase1["Phase 1: Optical Compilation & Pre-Compensation"]
+        direction LR
+        Clem["1. Clements SVD/QR<br/>(Target angles θ, φ, γ)"]
+        Calib["2. Foundry Calibration<br/>(Offsets ε, φ_int)"]
+        BNNLS["3. BNNLS Inversion<br/>(Cancels heat bleed)"]
+        DAC["4. DAC Quantizer (STE)<br/>(6/8-bit + Jitter)"]
+        Clem --> Calib --> BNNLS --> DAC
     end
 
     %% =========================================================================
-    %% PHASE 2: DYNAMIC WAVE PROPAGATION ENGINE
+    %% TIER 2: PHASE 2 WAVE ENGINE (HORIZONTAL ROW)
     %% =========================================================================
     subgraph Phase2["Phase 2: Dynamic Wave Propagation Engine (Mesh SOI Physics)"]
-        direction TB
-        GC_IN["Input Fiber Grating Couplers<br/>• -3.0 dB Insertion Loss<br/>• C-Band Spectral Dispersion"]
-        
-        subgraph MeshCascade["Layered Clements Planar MZI Matrix (N Columns, M MZIs)"]
-            direction TB
-            MZI_CELLS["MZI Unit Cells<br/>• 2×2 Unitary Rotations<br/>• Directional Couplers C(ε₁, ε₂)<br/>• Intrinsic Roughness Phase Bias φ_int"]
-            ROUTING["Planar Waveguide Routing<br/>• 0.15 dB/col Progressive Stage Loss<br/>• Waveguide Crossings (-40 dB Crosstalk, 0.025 dB Loss)<br/>• Waveguide Bend Radiation Loss"]
-            NONLINEAR["Silicon Nonlinear Optics<br/>• Intensity-Dependent Step: I = |E|²<br/>• Two-Photon Absorption (TPA)<br/>• Free-Carrier Absorption (FCA)<br/>• Kerr Self-Phase Modulation (SPM)"]
-            DIAG_SCREEN["Output Diagonal Phase Screen<br/>• N Single-Mode Phase Shifters D_diag(γ)<br/>• Completes Universal U(N) Synthesis"]
-            
-            MZI_CELLS --> ROUTING --> NONLINEAR --> DIAG_SCREEN
-        end
-        
-        GC_OUT["Output Fiber Grating Couplers<br/>• -3.0 dB Insertion Loss<br/>• Outputs Complex Fields E_out"]
-
-        GC_IN --> MeshCascade --> GC_OUT
+        direction LR
+        GC_IN["Grating In<br/>(-3 dB)"]
+        MZI["Clements MZIs<br/>(Coupler errors ε)"]
+        ROUTE["Routing & Crossings<br/>(Loss + -40dB xtalk)"]
+        NL["Nonlinear Optics<br/>(TPA, FCA, Kerr)"]
+        GC_OUT["Grating Out<br/>(-3 dB)"]
+        GC_IN --> MZI --> ROUTE --> NL --> GC_OUT
     end
 
     %% =========================================================================
-    %% PHASE 3: RECEIVER TRANSDUCTION & READOUT NOISE
+    %% TIER 3: PHASE 3 READOUT & NOISE (HORIZONTAL ROW)
     %% =========================================================================
-    subgraph Phase3["Phase 3: Receiver Transduction & Noise Readout (Hardware Interface)"]
-        direction TB
-        BPD["1. Balanced Photodiodes (BPD)<br/>• Germanium-on-Si PIN Detectors<br/>• Power to Current: I_ph = R · |E_out|²<br/>• 30 dB CMRR (Signed Arithmetic)"]
-        NOISE["2. Stochastic Noise Injection<br/>• Quantum Poisson Shot Noise<br/>• Johnson-Nyquist Thermal Hiss<br/>• Laser Relative Intensity Noise (RIN = -145 dB/Hz)"]
-        TIA["3. Transimpedance Amplification (TIA)<br/>• Current-to-Voltage: V = I_ph · R_tia<br/>• Rail-to-Rail Clamping at V_sat = 1.2 V"]
-        ADC["4. Output ADC Quantization<br/>• 8-bit Output Digitization<br/>• ENOB Degradation ≈ 5.8 - 6.2 bits<br/>• Delivers Digital Word y_pred ∈ ℝ^N"]
-
+    subgraph Phase3["Phase 3: Receiver Transduction & Noise Interface"]
+        direction LR
+        BPD["Balanced Photodiodes<br/>(I_ph = R·|E|²)"]
+        NOISE["Stochastic Noise<br/>(Shot + Thermal + RIN)"]
+        TIA["TIA Saturation<br/>(V_sat = 1.2 V)"]
+        ADC["8-bit ADC<br/>(ENOB ≈ 6 bits)"]
         BPD --> NOISE --> TIA --> ADC
     end
 
     %% =========================================================================
-    %% PHASE 4: SYSTEM BENCHMARKING & RETRAINING
+    %% TIER 4: PHASE 4 BENCHMARKING & RETRAINING LOOP
     %% =========================================================================
-    subgraph Phase4["Phase 4: System Benchmarking & Hardware-Aware Retraining"]
+    subgraph Phase4["Phase 4: Diagnostics & Hardware-in-the-Loop AI Retraining"]
         direction LR
-        BENCH["Verification & Diagnostics<br/>• Unitarity Error: < 10⁻¹⁵ (Ideal)<br/>• Total On-Chip Loss: 1.104 dB<br/>• Flight Latency: ~100 ps<br/>• GPU Batching: > 10,000 vectors/ms"]
-        TRAIN["Differentiable AI Retraining<br/>• Evaluates Task Loss L(y_pred, y_true)<br/>• Autograd Backward Propagation<br/>• Hardware-Aware Weight Updates"]
+        BENCH["Diagnostics & Benchmarks<br/>(Unitarity Error < 10⁻¹⁵, 100 ps Latency)"]
+        TRAIN["Differentiable AI Loss L(y_pred, y_true)<br/>(Hardware-Aware Retraining)"]
+        BENCH --- TRAIN
     end
 
     %% =========================================================================
-    %% SYSTEM SIGNAL FLOW CONNECTIONS
+    %% INTER-PHASE SIGNAL CONNECTIONS
     %% =========================================================================
-    AI_W -->|Target Matrix W| CLEMENTS
-    DAC -->|Calibrated Voltages V_DAC| MeshCascade
-
+    AI_W -->|Target Matrix W| Clem
     OPT_IN -->|Optical Carrier| GC_IN
-    GC_OUT -->|Optical Fields E_out| BPD
+    DAC -->|Voltages V_DAC| MZI
+    GC_OUT -->|Optical Field E_out| BPD
+    ADC -->|Predictions y_pred| BENCH
 
-    ADC -->|Electronic Predictions y_pred| Phase4
-
-    %% =========================================================================
-    %% DIFFERENTIABLE FEEDBACK LOOP (HARDWARE-IN-THE-LOOP RETRAINING)
-    %% =========================================================================
-    TRAIN -.->|Differentiable Backprop via STE Gradients ∂L/∂W| AI_W
+    %% Hardware-in-the-Loop Differentiable Feedback Loop
+    TRAIN -.->|Differentiable Backpropagation via STE Gradients ∂L/∂W| AI_W
 
     %% =========================================================================
-    %% STYLING AND COLOR ACCENTS
+    %% STYLING
     %% =========================================================================
-    classDef inputStyle fill:#111827,stroke:#38bdf8,stroke-width:1.5px,color:#f3f4f6;
+    classDef inStyle fill:#111827,stroke:#38bdf8,stroke-width:1.5px,color:#f3f4f6;
     classDef p1Style fill:#172033,stroke:#00e5ff,stroke-width:1.5px,color:#f3f4f6;
     classDef p2Style fill:#1a192e,stroke:#c084fc,stroke-width:1.5px,color:#f3f4f6;
     classDef p3Style fill:#241d19,stroke:#f59e0b,stroke-width:1.5px,color:#f3f4f6;
     classDef p4Style fill:#13231e,stroke:#10b981,stroke-width:1.5px,color:#f3f4f6;
 
-    class AI_W,OPT_IN inputStyle;
-    class CLEMENTS,CALIB,BNNLS,DAC p1Style;
-    class GC_IN,MZI_CELLS,ROUTING,NONLINEAR,DIAG_SCREEN,GC_OUT p2Style;
+    class AI_W,OPT_IN inStyle;
+    class Clem,Calib,BNNLS,DAC p1Style;
+    class GC_IN,MZI,ROUTE,NL,GC_OUT p2Style;
     class BPD,NOISE,TIA,ADC p3Style;
     class BENCH,TRAIN p4Style;
 ```
