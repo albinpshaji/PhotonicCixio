@@ -324,34 +324,62 @@ def plot_thermal_and_bnnls(
     else:
         ax2.text(0.5, 0.5, "Green's Matrix N/A", ha="center", va="center")
 
-    # 3. Unconstrained vs BNNLS Drive Powers
+    # 3. Unconstrained vs BNNLS Drive Powers & Mitigations
+    bnnls_wrapped_powers = data.get("bnnls_wrapped_powers", None)
+    prebias_powers = data.get("prebias_powers", None)
+
     if unconstrained_powers is not None and bnnls_powers is not None:
         idx = np.arange(len(unconstrained_powers))
-        width = 0.38
-        ax3.bar(idx - width/2, unconstrained_powers * 1e3, width, color=THEME["red"], alpha=0.8, label="Linear ($K^{-1}\\theta$, Unphysical)")
-        ax3.bar(idx + width/2, bnnls_powers * 1e3, width, color=THEME["green"], alpha=0.9, label=r"BNNLS FISTA ($0 \leq P \leq P_{\max}$)")
+        series = [
+            ("Linear ($K^{-1}\\theta$, Unphysical)", unconstrained_powers * 1e3, THEME["red"], 0.75),
+            ("Raw BNNLS ($P \\geq 0$, Clamped)", bnnls_powers * 1e3, THEME["amber"], 0.85),
+        ]
+        if bnnls_wrapped_powers is not None:
+            series.append((r"$2\pi$-Wrapped BNNLS", bnnls_wrapped_powers * 1e3, THEME["cyan"], 0.85))
+        if prebias_powers is not None:
+            series.append((r"Pre-Biased BNNLS (10 mW)", prebias_powers * 1e3, THEME["purple"], 0.85))
+
+        n_series = len(series)
+        total_width = 0.82
+        bar_w = total_width / n_series
+        start_offset = -total_width / 2.0 + bar_w / 2.0
+
+        for s_i, (label, vals, col, alpha) in enumerate(series):
+            pos = idx + start_offset + s_i * bar_w
+            ax3.bar(pos, vals, bar_w, color=col, alpha=alpha, label=label)
+
         ax3.axhline(0, color="white", linewidth=0.8, linestyle="--")
-        ax3.axhline(50.0, color=THEME["amber"], linewidth=1.2, linestyle=":", label="Max Power (50 mW)")
+        ax3.axhline(50.0, color=THEME["pink"], linewidth=1.2, linestyle=":", label="Max Power (50 mW)")
         ax3.set_xlabel("Actuator Heater Index")
         ax3.set_ylabel("Drive Power (mW)")
-        ax3.set_title("Thermal Predistortion Powers: Physical BNNLS vs Linear")
+        ax3.set_title("Thermal Predistortion Powers: Linear vs BNNLS Mitigations")
         ax3.grid(True, axis="y")
-        ax3.legend()
+        ax3.legend(fontsize=8, loc="upper right")
     else:
         ax3.text(0.5, 0.5, "Power Comparison N/A", ha="center", va="center")
 
     # 4. Residual Phase Errors
-    res_lin = data.get("res_lin", np.zeros(10))
-    res_bnnls = data.get("res_bnnls", np.zeros(10))
-    if len(res_bnnls) > 0:
+    res_lin = data.get("res_lin", None)
+    res_bnnls = data.get("res_bnnls", None)
+    res_wrapped = data.get("res_wrapped", None)
+    res_prebias = data.get("res_prebias", None)
+
+    if res_bnnls is not None and len(res_bnnls) > 0:
         idx = np.arange(len(res_bnnls))
-        ax4.plot(idx, np.abs(res_lin), marker="x", color=THEME["red"], label="Linear Residual")
-        ax4.plot(idx, np.abs(res_bnnls), marker="o", color=THEME["cyan"], label="BNNLS Residual")
+        if res_lin is not None:
+            ax4.plot(idx, np.abs(res_lin), marker="x", color=THEME["red"], linestyle="--", alpha=0.7, label=r"Linear Residual ($< 10^{-6}$ rad)")
+        ax4.plot(idx, np.abs(res_bnnls), marker="o", color=THEME["amber"], linewidth=2.0, label=r"Raw BNNLS (Bleed Floor $\approx 0.32$ rad)")
+        if res_wrapped is not None:
+            ax4.plot(idx, np.abs(res_wrapped), marker="^", color=THEME["cyan"], linewidth=2.0, label=r"$2\pi$-Wrapped BNNLS ($< 0.006$ rad)")
+        if res_prebias is not None:
+            ax4.plot(idx, np.abs(res_prebias), marker="s", color=THEME["purple"], linewidth=2.0, label=r"Pre-Biased BNNLS ($< 0.005$ rad)")
+
+        ax4.axhline(0.0314, color=THEME["green"], linestyle=":", linewidth=1.2, label=r"Precision Spec $\pi/100$ ($0.031$ rad)")
         ax4.set_xlabel("Actuator Heater Index")
         ax4.set_ylabel("Phase Error $|\\theta_{\\mathrm{target}} - \\theta_{\\mathrm{actual}}|$ (rad)")
-        ax4.set_title("Residual Target Phase Tracking Error")
+        ax4.set_title("Residual Target Phase Error: Bleed Floor vs Mitigations")
         ax4.grid(True)
-        ax4.legend()
+        ax4.legend(fontsize=8, loc="upper right")
 
     fig.suptitle("Thermo-Optic Crosstalk Inversion & Bounded Non-Negative Least Squares (BNNLS)", y=1.01)
     plt.tight_layout()

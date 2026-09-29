@@ -220,10 +220,30 @@ class ThermalCrosstalkModel(nn.Module):
 
         return theta_actual
 
+    def compute_thermal_bias_baseline(
+        self,
+        bias_power_watts: float,
+        is_full: bool = False,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None
+    ) -> torch.Tensor:
+        """Computes the static crosstalk phase baseline induced across actuators by a uniform thermal pre-bias."""
+        K_mat = self.K_norm_full if is_full else self.K_norm
+        if device is not None:
+            K_mat = K_mat.to(device=device)
+        if dtype is not None:
+            K_mat = K_mat.to(dtype=dtype)
+        theta_bias_val = (bias_power_watts / max(self.P_pi, 1e-6)) * math.pi
+        dim = K_mat.shape[-1]
+        theta_bias = torch.full((dim,), theta_bias_val, device=K_mat.device, dtype=K_mat.dtype)
+        return torch.matmul(theta_bias, K_mat.T)
+
     def predistort(
         self,
         theta_target: torch.Tensor,
         method: str = "linear",
+        enable_phase_wrapping: bool = False,
+        bias_power_watts: float = 0.0,
         max_power_watts: Optional[float] = None,
         regularization_lambda: Optional[float] = None,
         max_iter: int = 50,
@@ -236,6 +256,10 @@ class ThermalCrosstalkModel(nn.Module):
             theta_target: Target phase tensor of shape (..., K).
             method: 'linear' for theoretical unconstrained pseudoinverse (machine precision),
                     'bnnls' for bounded non-negative regularized physical drive (0 <= P <= P_max).
+            enable_phase_wrapping: If True, wraps targets theta_i -> theta_i + 2*pi for channels
+                                   suffering from passive neighbor bleed to avoid negative power.
+            bias_power_watts: Positive baseline power (Watts) for thermal pre-biasing, enabling
+                              bidirectional drive modulation without Peltier cooling.
             max_power_watts: Maximum electrical power per actuator (for BNNLS).
             regularization_lambda: Tikhonov regularization weight (for BNNLS).
             max_iter: Maximum iterations (for BNNLS).
@@ -250,6 +274,8 @@ class ThermalCrosstalkModel(nn.Module):
         if method == "bnnls":
             return self.predistort_bnnls(
                 theta_target=theta_target,
+                enable_phase_wrapping=enable_phase_wrapping,
+                bias_power_watts=bias_power_watts,
                 max_power_watts=max_power_watts,
                 regularization_lambda=regularization_lambda,
                 max_iter=max_iter,
@@ -287,6 +313,8 @@ class ThermalCrosstalkModel(nn.Module):
     def predistort_bnnls(
         self,
         theta_target: torch.Tensor,
+        enable_phase_wrapping: bool = False,
+        bias_power_watts: float = 0.0,
         max_power_watts: Optional[float] = None,
         regularization_lambda: Optional[float] = None,
         max_iter: int = 50,
@@ -297,6 +325,10 @@ class ThermalCrosstalkModel(nn.Module):
         Guarantees:
             0 <= theta_drive <= theta_max
         where theta_max = (P_max / P_pi) * pi.
+
+        Supports:
+            - enable_phase_wrapping: Modulo-2*pi transformation for channels needing negative power.
+            - bias_power_watts: Operating point offset enabling bidirectional virtual cooling.
         """
         if not self.enabled:
             return theta_target
@@ -316,9 +348,24 @@ class ThermalCrosstalkModel(nn.Module):
             global_drift = self.compute_package_heating(P_tot)
             theta_sub = torch.clamp(theta_target - global_drift, min=0.0)
         else:
-            theta_sub = theta_target
+            theta_sub = theta_target.clone()
 
-        # 2. Spectral radius calculation for Lipschitz step size
+        # 2. Thermal Pre-Biasing baseline shift if enabled
+        if bias_power_watts > 0.0:
+            theta_bias_val = (bias_power_watts / max(self.P_pi, 1e-6)) * math.pi
+            theta_bias = torch.full_like(theta_sub, theta_bias_val)
+            baseline_drift = torch.matmul(theta_bias, K_mat.T)
+            theta_sub = theta_sub + baseline_drift
+
+        # 3. 2*pi Phase Wrapping for channels where unconstrained demand is negative
+        if enable_phase_wrapping and bias_power_watts <= 0.0:
+            K_inv = (self.K_norm_full_inv if is_full else self.K_norm_inv).to(device=device, dtype=dtype)
+            theta_eff_lin = torch.matmul(theta_sub, K_inv.T)
+            wrap_mask = (theta_eff_lin < -1e-4) & ((theta_sub + 2.0 * math.pi) <= theta_max)
+            theta_sub = theta_sub.clone()
+            theta_sub[wrap_mask] = theta_sub[wrap_mask] + 2.0 * math.pi
+
+        # 4. Spectral radius calculation for Lipschitz step size
         with torch.no_grad():
             K_dim = K_mat.shape[-1]
             v = torch.ones(K_dim, 1, device=device, dtype=dtype) / math.sqrt(K_dim)
@@ -330,7 +377,7 @@ class ThermalCrosstalkModel(nn.Module):
             L_grad = torch.norm(torch.matmul(K_mat.T, torch.matmul(K_mat, v))).item() + lam
             step_size = 1.0 / max(L_grad, 1e-6)
 
-        # 3. FISTA acceleration loop
+        # 5. FISTA acceleration loop
         x = torch.clamp(theta_sub.clone(), 0.0, theta_max)
         y = x.clone()
         t = 1.0
@@ -350,7 +397,7 @@ class ThermalCrosstalkModel(nn.Module):
             x = x_next
             t = t_next
 
-        # 4. Inverse TCR adjustment if enabled
+        # 6. Inverse TCR adjustment if enabled
         if self.enable_tcr:
             P_target = (x / math.pi) * self.P_pi
             delta_T = self.config.thermal_impedance * P_target

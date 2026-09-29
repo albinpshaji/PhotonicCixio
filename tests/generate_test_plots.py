@@ -226,26 +226,53 @@ def generate_all_plots(output_dir="reports/plots"):
     G_th, K_norm = compute_fd_thermal_greens_function(coords_m)
     K_thermal = G_th.cpu().numpy()
 
-    cfg_th = PhotonicConfig(n_modes=4, enable_thermal_crosstalk=True, ideal_mode=False)
+    cfg_th = PhotonicConfig(
+        n_modes=4,
+        enable_thermal_crosstalk=True,
+        enable_tcr=False,
+        package_thermal_resistance=0.0,
+        ideal_mode=False
+    )
     thermal_mod = ThermalCrosstalkModel(cfg_th)
     M = cfg_th.total_mzis
 
-    gen_th = torch.Generator().manual_seed(99)
-    theta_target = torch.rand(M, generator=gen_th) * math.pi
+    # Realistic benchmark scenario: Heater 0 desires small phase while neighbors are high,
+    # forcing unconstrained inversion to demand unphysical negative heating (cooling).
+    theta_target = torch.tensor([0.05, 3.10, 2.95, 3.05, 0.40, 2.90], dtype=torch.float32)
 
-    # Unconstrained linear inversion
-    theta_unconstrained = thermal_mod.predistort(theta_target, method="linear")
+    # 1. Unconstrained linear inversion via K^-1
+    theta_unconstrained = thermal_mod.K_norm_inv @ theta_target
     p_unconstrained = (theta_unconstrained / math.pi * cfg_th.P_pi).numpy()
-
-    # BNNLS physical inversion
-    theta_bnnls = thermal_mod.predistort(theta_target, method="bnnls", max_power_watts=0.050, max_iter=80)
-    p_bnnls = (theta_bnnls / math.pi * cfg_th.P_pi).numpy()
-
-    # Realized phase tracking
     theta_real_lin = thermal_mod(theta_unconstrained).numpy()
-    theta_real_bnnls = thermal_mod(theta_bnnls).numpy()
     res_lin = theta_real_lin - theta_target.numpy()
+
+    # 2. Raw BNNLS physical inversion via FISTA (0 <= P <= P_max, un-wrapped)
+    theta_bnnls = thermal_mod.predistort(
+        theta_target, method="bnnls", enable_phase_wrapping=False, bias_power_watts=0.0, max_power_watts=0.050, max_iter=100
+    )
+    p_bnnls = (theta_bnnls / math.pi * cfg_th.P_pi).numpy()
+    theta_real_bnnls = thermal_mod(theta_bnnls).numpy()
     res_bnnls = theta_real_bnnls - theta_target.numpy()
+
+    # 3. 2pi-Wrapped BNNLS (eliminates negative cooling demand via modulo-2pi equivalence)
+    theta_wrapped = thermal_mod.predistort(
+        theta_target, method="bnnls", enable_phase_wrapping=True, bias_power_watts=0.0, max_power_watts=0.050, max_iter=150
+    )
+    p_wrapped = (theta_wrapped / math.pi * cfg_th.P_pi).numpy()
+    theta_real_wrapped = thermal_mod(theta_wrapped).numpy()
+    diff_wrapped = np.remainder(theta_real_wrapped - theta_target.numpy() + np.pi, 2.0 * np.pi) - np.pi
+    res_wrapped = diff_wrapped
+
+    # 4. Pre-Biased BNNLS (10 mW thermal bias enables bidirectional virtual cooling)
+    bias_p = 0.010
+    theta_prebias = thermal_mod.predistort(
+        theta_target, method="bnnls", enable_phase_wrapping=False, bias_power_watts=bias_p, max_power_watts=0.050, max_iter=150
+    )
+    p_prebias = (theta_prebias / math.pi * cfg_th.P_pi).numpy()
+    baseline_drift = thermal_mod.compute_thermal_bias_baseline(bias_p).numpy()
+    theta_real_prebias = thermal_mod(theta_prebias).numpy()
+    logical_prebias = theta_real_prebias - baseline_drift
+    res_prebias = logical_prebias - theta_target.numpy()
 
     # Synthesize 2D temperature distribution across die
     Nx, Ny = 100, 100
@@ -264,8 +291,12 @@ def generate_all_plots(output_dir="reports/plots"):
         "k_matrix": K_thermal,
         "unconstrained_powers": p_unconstrained,
         "bnnls_powers": p_bnnls,
+        "bnnls_wrapped_powers": p_wrapped,
+        "prebias_powers": p_prebias,
         "res_lin": res_lin,
-        "res_bnnls": res_bnnls
+        "res_bnnls": res_bnnls,
+        "res_wrapped": res_wrapped,
+        "res_prebias": res_prebias
     }, save_path=os.path.join(output_dir, "04_thermal_and_bnnls_predistortion.png"))
     print(f"  -> Saved: {p4}")
 
