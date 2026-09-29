@@ -1,10 +1,10 @@
 # Cixio Photonic Accelerator: Master Benchmark & Comparative Validation Report
-## Complete Pre-Calibration Baseline, Detailed Physical Explanations, and Cross-Run Comparison Framework
+## Complete Pre-Calibration Baseline, Comprehensive Dataset Catalog, and Cross-Run Comparison Framework
 
-**Document Version:** 4.0 (Audited Master Baseline)  
+**Document Version:** 5.0 (Master Dataset Catalog & Audited Baseline)  
 **Date:** September 29, 2026  
 **Audience:** Cross-Functional Team (Optical Physicists, ML Engineers, Software Developers, Test/QA, Executives)  
-**Status:** Permanent Baseline Record — Audited Against Real Silicon Data  
+**Status:** Permanent Baseline Record — Fully Audited Dataset Provenance & Empirical Benchmarks  
 
 ---
 
@@ -13,8 +13,12 @@
    - [How Light Calculates: The Plain-English Mechanics](#how-light-calculates-the-plain-english-mechanics)
    - [The Silicon Reality: Why Hardware Deviates from Math](#the-silicon-reality-why-hardware-deviates-from-math)
    - [System Architecture & Optical Mesh Topology Diagrams](#system-architecture--optical-mesh-topology-diagrams)
-2. [Master Pre-Calibration Comparison Table](#2-master-pre-calibration-comparison-table)
-3. [Minute Deep-Dive on All 8 Benchmark Studies (Audited)](#3-minute-deep-dive-on-all-8-benchmark-studies-audited)
+2. [Master Dataset Catalog & Provenance (All 8 Datasets)](#2-master-dataset-catalog--provenance-all-8-datasets)
+   - [Overview of the Datasets Ecosystem](#overview-of-the-datasets-ecosystem)
+   - [Master Dataset Specification Table](#master-dataset-specification-table)
+   - [Detailed Inspection of Each Dataset File](#detailed-inspection-of-each-dataset-file)
+3. [Master Pre-Calibration Comparison Table](#3-master-pre-calibration-comparison-table)
+4. [Minute Deep-Dive on All 8 Benchmark Studies (Audited)](#4-minute-deep-dive-on-all-8-benchmark-studies-audited)
    - [Study 1: Directional Coupler Dispersion vs SiEPIC FDTD S-Parameters](#study-1-directional-coupler-dispersion-vs-siepic-fdtd-s-parameters)
    - [Study 2: Clements Unitary Matrix Decomposition Parity](#study-2-clements-unitary-matrix-decomposition-parity)
    - [Study 3: Peterson & Barney Vowel Benchmark (MIT Shen et al. 2017)](#study-3-peterson--barney-vowel-benchmark-mit-shen-et-al-2017)
@@ -23,12 +27,12 @@
    - [Study 6: Multi-Wavelength WDM Soliton Comb & Parallel Throughput](#study-6-multi-wavelength-wdm-soliton-comb--parallel-throughput)
    - [Study 7: Applied Nanotools (ANT) Foundry 300mm Wafer Monte Carlo Yield](#study-7-applied-nanotools-ant-foundry-300mm-wafer-monte-carlo-yield)
    - [Study 8: Multi-Mode Dimensionality Scaling (MNIST Digits)](#study-8-multi-mode-dimensionality-scaling-mnist-digits)
-4. [Minute Root-Cause Gap Analysis (The 4 Discrepancies)](#4-minute-root-cause-gap-analysis-the-4-discrepancies)
-5. [The 4-Step Engineering Calibration Roadmap](#5-the-4-step-engineering-calibration-roadmap)
-6. [Post-Calibration Comparison Scorecard (Template for Next Run)](#6-post-calibration-comparison-scorecard-template-for-next-run)
-7. [Complete Raw Data Appendix (Full Numerical Tables & JSON Payloads)](#7-complete-raw-data-appendix-full-numerical-tables--json-payloads)
-8. [Comprehensive Glossary of Photonic & AI Hardware Terms](#8-comprehensive-glossary-of-photonic--ai-hardware-terms)
-9. [Verification & Reproducibility Guide](#9-verification--reproducibility-guide)
+5. [Minute Root-Cause Gap Analysis (The 4 Discrepancies)](#5-minute-root-cause-gap-analysis-the-4-discrepancies)
+6. [The 4-Step Engineering Calibration Roadmap](#6-the-4-step-engineering-calibration-roadmap)
+7. [Post-Calibration Comparison Scorecard (Template for Next Run)](#7-post-calibration-comparison-scorecard-template-for-next-run)
+8. [Complete Raw Data Appendix (Full Numerical Tables & JSON Payloads)](#8-complete-raw-data-appendix-full-numerical-tables--json-payloads)
+9. [Comprehensive Glossary of Photonic & AI Hardware Terms](#9-comprehensive-glossary-of-photonic--ai-hardware-terms)
+10. [Verification & Reproducibility Guide](#10-verification--reproducibility-guide)
 
 ---
 
@@ -126,7 +130,98 @@ Mode 4 ───╰─────────╯──────────�
 
 ---
 
-## 2. Master Pre-Calibration Comparison Table
+## 2. Master Dataset Catalog & Provenance (All 8 Datasets)
+
+### Overview of the Datasets Ecosystem
+All datasets are stored externally in the root workspace directory [`/home/albin/Desktop/cixiophotonic/datasets/`](file:///home/albin/Desktop/cixiophotonic/datasets/) to keep core simulation source code modular and decoupled from raw data. 
+
+The evaluation suite ingests **eight distinct datasets** spanning physical electromagnetic Maxwell S-parameters, foundry PDK lithographic process files, open-source photonic neural network repositories, acoustic speech recordings, production Large Language Model (Transformer) weights, Dense WDM optical frequency grids, and multi-mode vision tensors.
+
+```
+datasets/
+├── peterson_barney_vowels/        ── 1,520 speech recordings across 76 speakers (MIT 2017 benchmark)
+├── siepic_measured_sparams/       ── 88 FDTD S-parameter files (3.8 MB) + Applied Nanotools wafer PDK
+├── simphox_reference/             ── Stanford University Simphox photonic circuit framework
+├── neuroptica_reference/          ── MIT/Stanford Neuroptica nanophotonic simulation library
+├── transformer_attention_weights/ ── Pretrained BERT attention projection weights (128x128) & SVD tiles
+├── wdm_comb_spectra/              ── 64-line Kerr soliton microcomb spectrum & 48-ch ITU C-band grid
+├── mnist_photonic_benchmarks/     ── 1,797 handwritten digits formatted into 4, 8, 16-mode PCA tensors
+└── synthetic_from_engine/         ── Diagnostic wafer sweep (100 vectors) & generated result JSONs/PNGs
+```
+
+### Master Dataset Specification Table
+
+| # | Dataset Category | Primary File(s) / Directory Path | Origin / Institution | Format & Size | Dimensions / Sample Count | Key Features & Properties | Benchmark Study |
+|:---:|:---|:---|:---|:---:|:---|:---|:---:|
+| **1** | **Peterson & Barney Acoustic Vowels** | [`datasets/peterson_barney_vowels/`](file:///home/albin/Desktop/cixiophotonic/datasets/peterson_barney_vowels/)<br/>• `peterson_barney_vowel_formants.csv`<br/>• `mit_shen2017_4vowel_subset.csv`<br/>• `mit_shen2017_4vowel_dataset.pt` | Peterson & Barney (1952) / MIT Shen et al. (*Nature Photonics* 2017) | CSV & PyTorch `.pt`<br/>(87.5 KB total) | 1,520 total samples<br/>608 test samples<br/>4 classes (/iy/, /ih/, /eh/, /ae/) | Fundamental pitch ($F_0$) and acoustic formants ($F_1, F_2, F_3$) across 33 men, 28 women, 15 children | **Study 3** (Vowel Classification) |
+| **2** | **SiEPIC EBeam FDTD S-Parameters** | [`datasets/siepic_measured_sparams/directional_couplers_fdtd_sparams/`](file:///home/albin/Desktop/cixiophotonic/datasets/siepic_measured_sparams/directional_couplers_fdtd_sparams/)<br/>• 88 `.dat` & `.xml` files<br/>• Nom: `...gap=150nm_radius=10um...CoupleLength=0um.dat` | University of British Columbia (UBC) / SiEPIC EBeam PDK | Lumerical 3D FDTD Maxwell tables<br/>(3.8 MB total) | 88 coupler geometries<br/>101 spectral points per file ($1500\text{--}1600\text{ nm}$) | Through ($S_{21}, S_{31}$) and Cross ($S_{41}$) optical transmission, phase delay, excess loss across gaps (30-220nm) | **Study 1** (Coupler Dispersion) |
+| **3** | **Foundry Wafer Process Parameters** | [`datasets/siepic_measured_sparams/siepic_ant_montecarlo_wafer_parameters.json`](file:///home/albin/Desktop/cixiophotonic/datasets/siepic_measured_sparams/siepic_ant_montecarlo_wafer_parameters.json) | Applied Nanotools (ANT) via SiEPIC `MONTECARLO.xml` | JSON<br/>(697 Bytes) | 376 dies simulated across 300mm wafer disc | Width std dev $\sigma_w = 1.132\text{ nm}$, spatial correlation length $L_c = 12.23\text{ mm}$, height std dev $\sigma_h = 0.585\text{ nm}$ | **Study 7** (Wafer Monte Carlo Yield) |
+| **4** | **Stanford Simphox Framework** | [`datasets/simphox_reference/`](file:///home/albin/Desktop/cixiophotonic/datasets/simphox_reference/) | Stanford University / Sunil Pai & Shanhui Fan | Python source / Git repository | Complete Clements mesh compiler & error models | Clements matrix parameterization, gradient backpropagation, optical component calibration | **Study 2** (Clements Parity) |
+| **5** | **Neuroptica Nanophotonic Framework** | [`datasets/neuroptica_reference/`](file:///home/albin/Desktop/cixiophotonic/datasets/neuroptica_reference/) | MIT & Stanford University / Shen, Harris, et al. | Python source / Git repository | Feedforward optical neural network layers | Reck and Clements optical feedforward layers, electro-optic activation modeling | **Study 2** (Clements Parity) |
+| **6** | **Pretrained BERT Attention Weights** | [`datasets/transformer_attention_weights/`](file:///home/albin/Desktop/cixiophotonic/datasets/transformer_attention_weights/)<br/>• `bert_attention_layer0_128x128.pt`<br/>• `bert_attention_layer1_128x128.pt` | HuggingFace (`prajjwal1/bert-tiny`) | PyTorch `.pt`<br/>(1.58 MB total) | $128 \times 128$ matrices<br/>64 tiles of $16 \times 16$<br/>256 tiles of $8 \times 8$<br/>1024 tiles of $4 \times 4$ | Query, Key, Value, Output projection weights; analytical SVD components ($U, \Sigma, V^\dagger$); condition numbers | **Study 5** (Transformer Attention GEMM) |
+| **7** | **Soliton Microcomb & ITU Grid** | [`datasets/wdm_comb_spectra/`](file:///home/albin/Desktop/cixiophotonic/datasets/wdm_comb_spectra/)<br/>• `soliton_microcomb_c_band_spectrum.csv` / `.pt`<br/>• `itu_c_band_dwdm_grid.csv` | Micro-resonator soliton model / ITU-T G.694.1 standard | CSV & PyTorch `.pt`<br/>(11.3 KB total) | 64 comb lines ($100\text{ GHz}$ FSR)<br/>48 ITU channels ($191.3\text{--}196.0\text{ THz}$) | Carrier wavelengths ($1525.5\text{--}1576.1\text{ nm}$), $\text{sech}^2$ envelope ($-20\text{ to }+10\text{ dBm}$), OSNR ($25\text{--}48\text{ dB}$), phase noise | **Study 6** (WDM Soliton Comb) |
+| **8** | **Multi-Mode Photonic Digits (MNIST)**| [`datasets/mnist_photonic_benchmarks/photonic_digits_pca_multimode.pt`](file:///home/albin/Desktop/cixiophotonic/datasets/mnist_photonic_benchmarks/photonic_digits_pca_multimode.pt) | Scikit-Learn Digits / MNIST optical PCA | PyTorch `.pt`<br/>(219 KB) | 1,797 handwritten digits<br/>10 classes (0-9)<br/>Modes: $N \in \{4, 8, 16\}$ | PCA-reduced feature tensors: `X_4mode` $(1797, 4)$, `X_8mode` $(1797, 8)$, `X_16mode` $(1797, 16)$, explained variance | **Study 8** (Multi-Mode Scaling) |
+
+---
+
+### Detailed Inspection of Each Dataset File
+
+#### 1. Peterson & Barney Vowel Formant Dataset
+* **Location:** [`datasets/peterson_barney_vowels/`](file:///home/albin/Desktop/cixiophotonic/datasets/peterson_barney_vowels/)
+* **`peterson_barney_vowel_formants.csv`:** Full 1,520 acoustic recordings collected from 76 speakers (33 adult men, 28 adult women, 15 children) pronouncing 10 English vowels twice. Columns: `type` (m/w/c), `sex` (m/f), `speaker` (1-76), `vowel` (iy, ih, eh, ae, aa, ah, ao, uh, uw, er), `repetition` (1-2), `f0` (fundamental pitch in Hz), `f1` (first formant in Hz), `f2` (second formant in Hz), `f3` (third formant in Hz).
+* **`mit_shen2017_4vowel_subset.csv`:** Filtered subset of 608 recordings representing the four front vowels evaluated in Shen et al. 2017: `/iy/` ("heed"), `/ih/` ("hid"), `/eh/` ("head"), and `/ae/` ("had").
+* **`mit_shen2017_4vowel_dataset.pt`:** Pre-processed PyTorch dictionary:
+  ```python
+  import torch
+  data = torch.load("datasets/peterson_barney_vowels/mit_shen2017_4vowel_dataset.pt")
+  X = data["features"]  # Tensor shape: [608, 4] -> (f0, f1, f2, f3)
+  y = data["labels"]    # Tensor shape: [608] -> Class indices: 0, 1, 2, 3
+  classes = data["vowel_classes"]  # ['i', 'I', 'E', '{']
+  ```
+
+#### 2. SiEPIC EBeam FDTD S-Parameter Library
+* **Location:** [`datasets/siepic_measured_sparams/directional_couplers_fdtd_sparams/`](file:///home/albin/Desktop/cixiophotonic/datasets/siepic_measured_sparams/directional_couplers_fdtd_sparams/)
+* **Contents:** 88 Lumerical 3D FDTD simulation files (3.8 MB) modeling directional couplers manufactured on 220 nm Silicon-on-Insulator (SOI).
+* **Primary Evaluated File:** `ebeam_dc_halfring_straight_te1550_gap=150nm_radius=10um_width=500nm_thickness=220nm_CoupleLength=0um.dat`
+  - Nominal geometry: Waveguide width $w = 500\text{ nm}$, height $h = 220\text{ nm}$, coupling gap $g = 150\text{ nm}$, bend radius $R = 10\,\mu\text{m}$, straight coupling length $L_c = 0\,\mu\text{m}$ (point coupler).
+  - Data structure: 101 wavelength samples from $1.8737 \times 10^{14}\text{ Hz}$ ($1600.0\text{ nm}$) to $1.9986 \times 10^{14}\text{ Hz}$ ($1500.0\text{ nm}$).
+  - S-parameters: Port 1 input, Port 3 Through ($S_{31}$), Port 4 Cross ($S_{41}$), Port 2 Reflection ($S_{21}$).
+
+#### 3. Applied Nanotools (ANT) Foundry Wafer Statistical Parameters
+* **Location:** [`datasets/siepic_measured_sparams/siepic_ant_montecarlo_wafer_parameters.json`](file:///home/albin/Desktop/cixiophotonic/datasets/siepic_measured_sparams/siepic_ant_montecarlo_wafer_parameters.json)
+* **Contents:** Real lithographic manufacturing variance extracted from the SiEPIC PDK `MONTECARLO.xml` for Applied Nanotools 100 keV Electron Beam lithography:
+  - Waveguide width std dev: $\sigma_w = 1.132\text{ nm}$
+  - Spatial correlation length: $L_c = 12.23\text{ mm}$ (Matern 3/2 covariance)
+  - Waveguide height std dev: $\sigma_h = 0.585\text{ nm}$ (height correlation $L_{c,h} = 8.72\text{ mm}$)
+  - Induced directional coupler split error: $\Delta \kappa \approx \pm 0.015\text{ to }\pm 0.038$ across wafer dies.
+
+#### 4. Pretrained Transformer Attention Weights (BERT)
+* **Location:** [`datasets/transformer_attention_weights/`](file:///home/albin/Desktop/cixiophotonic/datasets/transformer_attention_weights/)
+* **Files:** `bert_attention_layer0_128x128.pt` and `bert_attention_layer1_128x128.pt` (793 KB each).
+* **Contents:**
+  - `model_name`: `"prajjwal1/bert-tiny"` (HuggingFace Transformers)
+  - `query_weight`, `key_weight`, `value_weight`, `output_weight`: Shape `[128, 128]`
+  - `svd_components`: SVD factors `query_U` $[128, 128]$, `query_S` $[128]$, `query_Vh` $[128, 128]$
+  - `tiles_16x16`: Tensor of shape `[64, 16, 16]` (sixty-four $16 \times 16$ Clements mesh tiles)
+  - `tiles_8x8`: Tensor of shape `[256, 8, 8]` (256 tiles of $8 \times 8$)
+  - `tiles_4x4`: Tensor of shape `[1024, 4, 4]` (1,024 tiles of $4 \times 4$)
+
+#### 5. Soliton Microcomb Spectrum & ITU-T DWDM Grid
+* **Location:** [`datasets/wdm_comb_spectra/`](file:///home/albin/Desktop/cixiophotonic/datasets/wdm_comb_spectra/)
+* **`itu_c_band_dwdm_grid.csv`:** 48 optical channels conforming to the ITU-T G.694.1 100 GHz DWDM standard from Channel 13 ($191.3\text{ THz}$, $1567.13\text{ nm}$) to Channel 60 ($196.0\text{ THz}$, $1529.55\text{ nm}$) with chromatic dispersion coefficients $D(\lambda) \approx -1200\text{ ps/(nm}\cdot\text{km)}$.
+* **`soliton_microcomb_c_band_spectrum.csv` / `.pt`:** 64-line Dissipative Kerr Soliton microcomb centered at $1550.0\text{ nm}$ ($193.414\text{ THz}$) with $100.0\text{ GHz}$ FSR ($0.801\text{ nm}$ spacing), covering $190.214\text{ THz}$ ($1576.08\text{ nm}$) to $196.514\text{ THz}$ ($1525.55\text{ nm}$) with a $\text{sech}^2$ spectral power envelope ($-20.32\text{ dBm}$ to $+10.00\text{ dBm}$), OSNR ($25.6\text{ to }48.0\text{ dB}$), and carrier phase noise.
+
+#### 6. Multi-Mode Photonic Digits Dataset (MNIST)
+* **Location:** [`datasets/mnist_photonic_benchmarks/photonic_digits_pca_multimode.pt`](file:///home/albin/Desktop/cixiophotonic/datasets/mnist_photonic_benchmarks/photonic_digits_pca_multimode.pt)
+* **Contents:** 1,797 handwritten $8 \times 8$ grayscale digit images across 10 classes (digits 0 through 9), dimensionally reduced via Principal Component Analysis (PCA) to evaluate optical mesh scaling:
+  - `X_4mode`: Shape `[1797, 4]` (for $4 \times 4$ optical meshes, 6 MZIs)
+  - `X_8mode`: Shape `[1797, 8]` (for $8 \times 8$ optical meshes, 28 MZIs)
+  - `X_16mode`: Shape `[1797, 16]` (for $16 \times 16$ optical meshes, 120 MZIs)
+  - `labels`: Shape `[1797]` (ground-truth integer classes $0\text{--}9$)
+
+---
+
+## 3. Master Pre-Calibration Comparison Table
 
 This master table records the **exact quantitative state** of all 8 benchmark studies prior to calibration. It includes the target values we expect to achieve once the calibration fixes are applied, and provides dedicated slots for the post-calibration verification run.
 
@@ -159,9 +254,14 @@ This master table records the **exact quantitative state** of all 8 benchmark st
 
 ---
 
-## 3. Minute Deep-Dive on All 8 Benchmark Studies (Audited)
+## 4. Minute Deep-Dive on All 8 Benchmark Studies (Audited)
 
 ### Study 1: Directional Coupler Dispersion vs SiEPIC FDTD S-Parameters
+
+* **Exact Input Datasets Used:**
+  - Primary File: [`ebeam_dc_halfring_straight_te1550_gap=150nm_radius=10um_width=500nm_thickness=220nm_CoupleLength=0um.dat`](file:///home/albin/Desktop/cixiophotonic/datasets/siepic_measured_sparams/directional_couplers_fdtd_sparams/ebeam_dc_halfring_straight_te1550_gap=150nm_radius=10um_width=500nm_thickness=220nm_CoupleLength=0um.dat) (49.5 KB)
+  - Full Library: [`datasets/siepic_measured_sparams/directional_couplers_fdtd_sparams/`](file:///home/albin/Desktop/cixiophotonic/datasets/siepic_measured_sparams/directional_couplers_fdtd_sparams/) (88 files, 3.8 MB)
+  - Output Record: [`datasets/synthetic_from_engine/coupler_dispersion_synthetic_vs_siepic.json`](file:///home/albin/Desktop/cixiophotonic/datasets/synthetic_from_engine/coupler_dispersion_synthetic_vs_siepic.json)
 
 #### The Layman's Analogy
 Imagine two parallel train tracks that run close together for a short distance. If a train is traveling on Track 1, a magical switch allows passenger cars to slide onto Track 2. A **Directional Coupler** is this exact switch, but for light. 
@@ -176,9 +276,7 @@ $$\kappa(\lambda) \approx \kappa_0 + \left(\frac{d\kappa}{d\lambda}\right) (\lam
 The rate of change $d\kappa/d\lambda$ is the **dispersion slope**.
 
 #### Test Procedure & Verified Data
-We evaluated our digital twin model in `src/physics/mzi.py` against the official University of British Columbia (UBC) SiEPIC EBeam FDTD numerical dataset (`ebeam_dc_halfring_straight_te1550_gap=150nm_radius=10um_width=500nm_thickness=220nm_CoupleLength=0um.dat`), sweeping from $1500\text{ nm}$ to $1600\text{ nm}$ across 101 spectral sample points.
-
-The table below shows the **exact audited power transmission and cross split ratio**:
+We evaluated our digital twin model in `src/physics/mzi.py` against the official University of British Columbia (UBC) SiEPIC EBeam FDTD numerical dataset across 101 spectral sample points from $1500\text{ nm}$ to $1600\text{ nm}$.
 
 | Wavelength ($\lambda$) | FDTD Through ($P_{\text{bar}}$) | FDTD Cross ($P_{\text{cross}}$) | FDTD Split Ratio ($\kappa_{\text{FDTD}}$) | Digital Twin Ratio ($\kappa_{\text{twin}}$) | Split Error $|\Delta \kappa|$ | Physical Drift Comparison |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---|
@@ -207,8 +305,10 @@ The table below shows the **exact audited power transmission and cross split rat
 
 ### Study 2: Clements Unitary Matrix Decomposition Parity
 
-#### The Layman's Analogy
-Think of a complex mathematical matrix as an origami sculpture. Clements decomposition is the set of origami folding instructions. It takes any desired rotation in 16-dimensional space and calculates the exact angle for every heater on the chip.
+* **Exact Reference Repositories Used:**
+  - Stanford Simphox: [`datasets/simphox_reference/`](file:///home/albin/Desktop/cixiophotonic/datasets/simphox_reference/) (Sunil Pai et al.)
+  - MIT Neuroptica: [`datasets/neuroptica_reference/`](file:///home/albin/Desktop/cixiophotonic/datasets/neuroptica_reference/) (Yichen Shen et al.)
+  - Output Record: [`datasets/synthetic_from_engine/clements_decomposition_parity.json`](file:///home/albin/Desktop/cixiophotonic/datasets/synthetic_from_engine/clements_decomposition_parity.json)
 
 #### Verified Numerical Parity
 | Mesh Size ($N \times N$) | MZI Count ($N(N-1)/2$) | Target Matrix Class | Frobenius Norm Error | Unitary Fidelity ($F$) | Compiler Runtime ($\text{ms}$) | Parity vs Stanford Simphox |
@@ -221,8 +321,11 @@ Think of a complex mathematical matrix as an origami sculpture. Clements decompo
 
 ### Study 3: Peterson & Barney Vowel Benchmark (MIT Shen et al. 2017)
 
-#### The Layman's Analogy
-When speaking, human vocal cords create sound waves that resonate in the mouth and throat at specific frequencies called **formants** ($F_1, F_2, F_3$). In 2017, MIT demonstrated that an optical chip could identify four spoken vowels (/iy/ in "heed", /ih/ in "hid", /eh/ in "head", and /ae/ in "had") by mapping formants into waveguides.
+* **Exact Input Datasets Used:**
+  - PyTorch Input: [`datasets/peterson_barney_vowels/mit_shen2017_4vowel_dataset.pt`](file:///home/albin/Desktop/cixiophotonic/datasets/peterson_barney_vowels/mit_shen2017_4vowel_dataset.pt) (16.9 KB, 608 samples)
+  - Raw CSV Subset: [`datasets/peterson_barney_vowels/mit_shen2017_4vowel_subset.csv`](file:///home/albin/Desktop/cixiophotonic/datasets/peterson_barney_vowels/mit_shen2017_4vowel_subset.csv) (20.2 KB)
+  - Full Master Cohort: [`datasets/peterson_barney_vowels/peterson_barney_vowel_formants.csv`](file:///home/albin/Desktop/cixiophotonic/datasets/peterson_barney_vowels/peterson_barney_vowel_formants.csv) (50.4 KB, 1,520 recordings)
+  - Output Record: [`datasets/synthetic_from_engine/vowel_classification_benchmark_results.json`](file:///home/albin/Desktop/cixiophotonic/datasets/synthetic_from_engine/vowel_classification_benchmark_results.json)
 
 #### Verified Experimental Data
 | Experimental Regime | Cixio Baseline Accuracy (%) | MIT Shen 2017 Published (%) | Delta / Gap | Failure Mechanism | Target After Calibration (%) |
@@ -238,8 +341,9 @@ When speaking, human vocal cords create sound waves that resonate in the mouth a
 
 ### Study 4: Diagnostic In-Situ Defect Parameter Recovery
 
-#### The Layman's Analogy
-When a doctor examines a patient, an MRI provides internal images without surgery. Once an optical chip is sealed in ceramic packaging, you cannot physically probe internal waveguides. Diagnostic Parameter Recovery is our optical "MRI": sending known light pulses into the inputs, measuring outputs, and calculating internal defects.
+* **Exact Synthetic Datasets Used:**
+  - Diagnostic Probe File: [`datasets/synthetic_from_engine/synthetic_chip_calibration_sweep.pt`](file:///home/albin/Desktop/cixiophotonic/datasets/synthetic_from_engine/synthetic_chip_calibration_sweep.pt) (9.2 KB, 100 probe vectors)
+  - Output Record: [`datasets/synthetic_from_engine/synthetic_calibration_recovery_results.json`](file:///home/albin/Desktop/cixiophotonic/datasets/synthetic_from_engine/synthetic_calibration_recovery_results.json)
 
 #### Verified Recovery Metrics
 * **Prior Model RMSE:** $0.091586$ ($9.16\%$ prediction error).
@@ -251,8 +355,10 @@ When a doctor examines a patient, an MRI provides internal images without surger
 
 ### Study 5: Enterprise Transformer Attention Acceleration (BERT GEMM)
 
-#### The Layman's Analogy
-Transformer attention multiplies token vectors by the Query Weight Matrix $\mathbf{W}_Q$. We downloaded pretrained BERT weights ($128 \times 128$) from HuggingFace, sliced them into sixty-four $16 \times 16$ Clements mesh tiles via SVD, and evaluated accuracy across 4, 6, 8, 10, and 12-bit DAC precisions.
+* **Exact Input Datasets Used:**
+  - Layer 0 Weights & Tiles: [`datasets/transformer_attention_weights/bert_attention_layer0_128x128.pt`](file:///home/albin/Desktop/cixiophotonic/datasets/transformer_attention_weights/bert_attention_layer0_128x128.pt) (793 KB)
+  - Layer 1 Weights & Tiles: [`datasets/transformer_attention_weights/bert_attention_layer1_128x128.pt`](file:///home/albin/Desktop/cixiophotonic/datasets/transformer_attention_weights/bert_attention_layer1_128x128.pt) (793 KB)
+  - Output Record: [`datasets/synthetic_from_engine/transformer_gemm_results.json`](file:///home/albin/Desktop/cixiophotonic/datasets/synthetic_from_engine/transformer_gemm_results.json)
 
 #### Verified DAC Scaling Data
 | DAC Bits ($B$) | Discrete Voltage Levels | Quantization Step Size ($V_{\text{LSB}}$) | Uncalibrated Cosine Similarity | Calibrated Cosine Similarity | Uncalibrated Relative Error (%) | Calibrated Relative Error (%) | Status & Silicon Viability |
@@ -270,14 +376,13 @@ Transformer attention multiplies token vectors by the Query Weight Matrix $\math
 
 ### Study 6: Multi-Wavelength WDM Soliton Comb & Parallel Throughput
 
-#### The Layman's Analogy
-Instead of building 64 physical microprocessors to do 64 math tasks, we shine a **rainbow of 64 different laser colors** through the exact same physical silicon waveguide simultaneously! Each color executes a matrix multiplication in parallel.
+* **Exact Input Datasets Used:**
+  - Microcomb Spectrum Tensor: [`datasets/wdm_comb_spectra/soliton_microcomb_c_band_spectrum.pt`](file:///home/albin/Desktop/cixiophotonic/datasets/wdm_comb_spectra/soliton_microcomb_c_band_spectrum.pt) (5.2 KB, 64 lines)
+  - Microcomb Spectrum CSV: [`datasets/wdm_comb_spectra/soliton_microcomb_c_band_spectrum.csv`](file:///home/albin/Desktop/cixiophotonic/datasets/wdm_comb_spectra/soliton_microcomb_c_band_spectrum.csv) (3.2 KB)
+  - ITU DWDM Grid: [`datasets/wdm_comb_spectra/itu_c_band_dwdm_grid.csv`](file:///home/albin/Desktop/cixiophotonic/datasets/wdm_comb_spectra/itu_c_band_dwdm_grid.csv) (2.9 KB, 48 channels)
+  - Output Record: [`datasets/synthetic_from_engine/wdm_comb_results.json`](file:///home/albin/Desktop/cixiophotonic/datasets/synthetic_from_engine/wdm_comb_results.json)
 
 #### Verified C-Band Spectral Overlap & Throughput
-Because real hardware features physical insertion loss ($3.2\text{ dB}$ across waveguide crossings and couplers), the unnormalized optical transfer matrix has trace norm $\frac{1}{8}\text{Tr}(\mathbf{U}_{\text{ref}}^\dagger \mathbf{U}_{\text{ref}}) = 0.5620$. 
-
-The table below lists the verified channel response across the C-band:
-
 | Comb Line Index | Optical Frequency ($\text{THz}$) | Wavelength ($\text{nm}$) | Power ($\text{dBm}$) | Raw Mesh Overlap | Compensated Overlap | Normalized Fidelity ($F$) | Physical State |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---|
 | **Line -32** (Band Edge) | $190.214\text{ THz}$ | $1576.08\text{ nm}$ | $-20.32\text{ dBm}$ | $0.1529$ | $0.1571$ | **$0.2721$** | High dispersion drift |
@@ -304,8 +409,9 @@ The table below lists the verified channel response across the C-band:
 
 ### Study 7: Applied Nanotools (ANT) Foundry 300mm Wafer Monte Carlo Yield
 
-#### The Layman's Analogy
-When baking cookies, cookies on the edge of the baking sheet bake slightly differently than cookies in the center. In semiconductor manufacturing, 376 chips are printed across a $300\text{ mm}$ silicon wafer. Due to chemical plasma etching gradients, waveguides near the wafer edge deviate from the center.
+* **Exact Process PDK Files Used:**
+  - ANT Foundry Parameters: [`datasets/siepic_measured_sparams/siepic_ant_montecarlo_wafer_parameters.json`](file:///home/albin/Desktop/cixiophotonic/datasets/siepic_measured_sparams/siepic_ant_montecarlo_wafer_parameters.json) (697 Bytes)
+  - Output Record: [`datasets/synthetic_from_engine/foundry_yield_results.json`](file:///home/albin/Desktop/cixiophotonic/datasets/synthetic_from_engine/foundry_yield_results.json)
 
 #### Verified Yield Data
 * **Wafer Diameter:** $300.0\text{ mm}$ (12 inches).
@@ -323,8 +429,9 @@ When baking cookies, cookies on the edge of the baking sheet bake slightly diffe
 
 ### Study 8: Multi-Mode Dimensionality Scaling (MNIST Digits)
 
-#### The Layman's Analogy
-A 4-mode optical chip only has 4 photodetectors. It is mathematically impossible for 4 linear detectors to separate 10 handwritten digit classes without non-linear expansion, capping accuracy at the $10\%$ random guess floor. Expanding to $N=16$ modes unlocks true pattern recognition.
+* **Exact Input Datasets Used:**
+  - PCA Multimode Digits: [`datasets/mnist_photonic_benchmarks/photonic_digits_pca_multimode.pt`](file:///home/albin/Desktop/cixiophotonic/datasets/mnist_photonic_benchmarks/photonic_digits_pca_multimode.pt) (219 KB, 1,797 samples)
+  - Output Record: [`datasets/synthetic_from_engine/multimode_scaling_results.json`](file:///home/albin/Desktop/cixiophotonic/datasets/synthetic_from_engine/multimode_scaling_results.json)
 
 #### Verified Multi-Mode Scaling Metrics
 | Optical Modes ($N$) | MZI Count | Total Mesh Optical Loss | Thermal Dissipation | Ideal Simulation Accuracy | Raw Hardware Accuracy | Calibrated Hardware Accuracy | Primary Limiting Factor |
@@ -338,7 +445,7 @@ A 4-mode optical chip only has 4 photodetectors. It is mathematically impossible
 
 ---
 
-## 4. Minute Root-Cause Gap Analysis (The 4 Discrepancies)
+## 5. Minute Root-Cause Gap Analysis (The 4 Discrepancies)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -362,7 +469,7 @@ A 4-mode optical chip only has 4 photodetectors. It is mathematically impossible
 
 ---
 
-## 5. The 4-Step Engineering Calibration Roadmap
+## 6. The 4-Step Engineering Calibration Roadmap
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -393,7 +500,7 @@ A 4-mode optical chip only has 4 photodetectors. It is mathematically impossible
 
 ---
 
-## 6. Post-Calibration Comparison Scorecard (Template for Next Run)
+## 7. Post-Calibration Comparison Scorecard (Template for Next Run)
 
 | Benchmark Study & Metric | Pre-Calibration Baseline | Target Expected | Post-Calibration Measured | Achieved Improvement (%) | Status |
 |:---|:---:|:---:|:---:|:---:|:---:|
@@ -408,7 +515,7 @@ A 4-mode optical chip only has 4 photodetectors. It is mathematically impossible
 
 ---
 
-## 7. Complete Raw Data Appendix (Full Numerical Tables & JSON Payloads)
+## 8. Complete Raw Data Appendix (Full Numerical Tables & JSON Payloads)
 
 ### Appendix A: Directional Coupler vs SiEPIC FDTD (`coupler_dispersion_synthetic_vs_siepic.json`)
 ```json
@@ -598,7 +705,7 @@ A 4-mode optical chip only has 4 photodetectors. It is mathematically impossible
 
 ---
 
-## 8. Comprehensive Glossary of Photonic & AI Hardware Terms
+## 9. Comprehensive Glossary of Photonic & AI Hardware Terms
 
 * **Waveguide:** A microscopic silicon glass channel ($500\text{ nm} \times 220\text{ nm}$) that traps and guides light on a chip using total internal reflection, analogous to a copper wire for electricity.
 * **Directional Coupler (DC):** A device where two waveguides run close together (separated by $150\text{ nm}$) so light evanescently leaks between them, splitting optical power $50:50$.
@@ -617,7 +724,7 @@ A 4-mode optical chip only has 4 photodetectors. It is mathematically impossible
 
 ---
 
-## 9. Verification & Reproducibility Guide
+## 10. Verification & Reproducibility Guide
 
 All datasets, scripts, and visual artifacts are fully automated, version-controlled, and locally reproducible:
 
